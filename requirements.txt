@@ -1,0 +1,19 @@
+# Phân tích và xử lý dữ liệu
+numpy
+pandas
+scikit-learn        # Dùng để tính Class Weights và Stratified Split
+
+# Xử lý hình ảnh
+opencv-python
+Pillow
+
+# Deep Learning (Core)
+tensorflow>=2.10.0  # Chứa MobileNet và các công cụ huấn luyện
+keras
+
+# Thu thập và quản lý dữ liệu
+kaggle              # Dùng để tải dataset tự động từ Kaggle
+
+# Hiển thị và báo cáo
+matplotlib
+seaborn             # Dùng để vẽ Confusion Matrix và biểu đồ phân bố lớp
