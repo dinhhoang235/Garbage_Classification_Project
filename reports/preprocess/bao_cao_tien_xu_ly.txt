@@ -1,0 +1,20 @@
+=== BÁO CÁO TIỀN XỬ LÝ (TIẾNG VIỆT) ===
+Tìm thấy 8581 ảnh hợp lệ thuộc 10 lớp cho tập train.
+Tìm thấy 1839 ảnh hợp lệ thuộc 10 lớp cho tập validation.
+Tìm thấy 1839 ảnh hợp lệ thuộc 10 lớp cho tập test.
+=== TÓM TẮT ===
+Tổng ảnh hợp lệ : 12259
+Tổng ảnh lỗi    : 0
+Kích thước train: 8581
+Kích thước val  : 1839
+Kích thước test : 1839
+Ảnh báo cáo đã tạo:
+- reports/preprocess/class_distribution_raw.png
+- reports/preprocess/class_distribution_split.png
+- reports/preprocess/dataset_quality.png
+- reports/preprocess/augmentation_preview.png
+=== DỮ LIỆU ĐÃ CHIA VÀ LƯU RA THƯ MỤC ===
+Thư mục lưu   : data/processed
+Số ảnh train  : 8581
+Số ảnh val    : 1839
+Số ảnh test   : 1839
