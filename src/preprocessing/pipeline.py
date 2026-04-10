@@ -16,6 +16,7 @@ def run_preprocessing_pipeline(
     remove_invalid=False,
     save_split=False,
     overwrite_processed=True,
+    balance_strategy="oversample",
 ):
     """Chay day du tien xu ly: tao generator, sinh bao cao va luu split tuy chon."""
     train_gen, val_gen, test_gen = get_data_generators(
@@ -27,6 +28,7 @@ def run_preprocessing_pipeline(
         test_ratio=test_ratio,
         random_state=random_state,
         remove_invalid=remove_invalid,
+        balance_strategy=balance_strategy,
     )
 
     report_summary = generate_preprocessing_report(

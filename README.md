@@ -112,12 +112,43 @@ Garbage_Classification_Project/
 ## Bước 1: Chạy tiền xử lý
 Sau khi đã tải dữ liệu và cài thư viện, chạy lệnh sau để:
 - Tạo generator train/val/test
+- Cân bằng dữ liệu train (mặc định: oversample)
 - Sinh báo cáo tiền xử lý trong thư mục `reports/preprocess`
 - Lưu dữ liệu đã chia vào `data/processed/train|val|test`
 - Lưu thêm báo cáo chữ tiếng Việt tại `reports/preprocess/bao_cao_tien_xu_ly.txt`
 
 ```bash
 python src/preprocess.py
+```
+
+## Pipeline tiền xử lý
+Pipeline hiện tại được chạy qua `src/preprocess.py` -> `run_preprocessing_pipeline(...)` trong `src/preprocessing/pipeline.py`, gồm các bước:
+
+1. Quét dữ liệu và lọc ảnh lỗi (`dataset_io.py`).
+2. Chia tập train/val/test theo tỉ lệ 70/15/15 bằng stratified split (`splitter.py`).
+3. Cân bằng dữ liệu train (`generators.py`):
+	- `oversample` (mặc định): tăng mẫu lớp thiểu số bằng lấy mẫu lặp.
+	- `class_weight`: giữ nguyên dữ liệu, tính trọng số lớp và gắn vào `train_gen.class_weight`.
+	- `none`: không cân bằng.
+4. Data augmentation cho train generator (`rotation`, `shift`, `shear`, `zoom`, `horizontal_flip`).
+5. Sinh báo cáo tiền xử lý và ảnh minh họa augmentation (`reporting.py`).
+6. Tùy chọn lưu dữ liệu đã chia vào `data/processed/train|val|test`.
+
+Sơ đồ ngắn gọn:
+
+`Dataset gốc -> Làm sạch dữ liệu -> Chuẩn hóa/chia train-val-test -> Cân bằng dữ liệu train -> Data Augmentation -> Dataset sau xử lý`
+
+Các cách chạy thường dùng:
+
+```bash
+# Mặc định: có cân bằng theo oversample
+python src/preprocess.py
+
+# Tắt cân bằng dữ liệu
+python src/preprocess.py --balance_strategy none
+
+# Dùng class weight thay cho oversample
+python src/preprocess.py --balance_strategy class_weight
 ```
 
 Nếu bạn không muốn lưu dữ liệu đã chia ra thư mục `data/processed`, dùng cờ `--no_save_split`:

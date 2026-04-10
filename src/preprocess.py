@@ -40,6 +40,13 @@ def _build_arg_parser():
         action="store_true",
         help="Xoa cac file anh loi khoi o dia khi quet du lieu",
     )
+    parser.add_argument(
+        "--balance_strategy",
+        type=str,
+        default="oversample",
+        choices=["none", "oversample", "class_weight"],
+        help="Can bang du lieu train: none | oversample | class_weight",
+    )
     return parser
 
 
@@ -59,6 +66,7 @@ def main():
         remove_invalid=args.remove_invalid,
         save_split=not args.no_save_split,
         overwrite_processed=not args.no_overwrite_processed,
+        balance_strategy=args.balance_strategy,
     )
 
     txt_report_path = Path(args.report_dir) / "bao_cao_tien_xu_ly.txt"
@@ -68,6 +76,7 @@ def main():
 
     summary_lines = [
         "=== BÁO CÁO TIỀN XỬ LÝ (TIẾNG VIỆT) ===",
+        f"Chien luoc can bang du lieu train: {args.balance_strategy}",
         f"Tìm thấy {train_gen.samples} ảnh hợp lệ thuộc {train_num_classes} lớp cho tập train.",
         f"Tìm thấy {val_gen.samples} ảnh hợp lệ thuộc {val_num_classes} lớp cho tập validation.",
         f"Tìm thấy {test_gen.samples} ảnh hợp lệ thuộc {test_num_classes} lớp cho tập test.",
@@ -96,6 +105,7 @@ def main():
     txt_report_path.write_text("\n".join(summary_lines) + "\n", encoding="utf-8")
 
     print("=== PREPROCESSING REPORT SUMMARY ===")
+    print(f"Balance strategy: {args.balance_strategy}")
     print(f"Valid images   : {report_info['total_valid']}")
     print(f"Invalid images : {report_info['total_invalid']}")
     print(f"Train size     : {report_info['train_size']}")
