@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "${MYSQL_PORT}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  server:
+    build: .
+    depends_on:
+      - db
+    ports:
+      - "${BACKEND_PORT}:8000"
+    volumes:
+      - ./:/app
+      - ../../models:/app/models:ro
+    env_file:
+      - .env
+    environment:
+      MODEL_PATH: ${MODEL_PATH}
+      DATABASE_URL: ${DATABASE_URL}
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  mysql-data:

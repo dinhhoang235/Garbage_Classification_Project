@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+pymysql
+cryptography
+python-dotenv
+alembic
+pydantic>=1.10
+python-multipart
+email-validator
+pyjwt
+passlib
+bcrypt
+tensorflow>=2.12
+numpy
+pillow
