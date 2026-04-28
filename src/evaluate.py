@@ -12,7 +12,7 @@ from preprocessing.generators import get_data_generators
 def parse_args():
     """Định nghĩa tham số dòng lệnh cho script đánh giá."""
     parser = argparse.ArgumentParser(description="Evaluate a trained model on the garbage classification test set")
-    parser.add_argument("--model_path", type=str, default="models/weights/mobilenet_baseline_best.keras", help="Saved model path")
+    parser.add_argument("--model_path", type=str, default="model/weights/mobilenet_baseline_best.keras", help="Saved model path")
     parser.add_argument("--base_dir", type=str, default="data/raw/original", help="Root image folder with class subfolders")
     parser.add_argument("--img_size", type=int, nargs=2, default=[224, 224], help="Image size for evaluation")
     parser.add_argument("--batch_size", type=int, default=32, help="Batch size")

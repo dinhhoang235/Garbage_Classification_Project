@@ -24,7 +24,7 @@ services:
       - "${BACKEND_PORT}:8000"
     volumes:
       - ./:/app
-      - ../../models:/app/models:ro
+      - ../../model:/app/model:ro
     env_file:
       - .env
     environment:

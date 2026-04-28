@@ -39,8 +39,8 @@ def run_training_pipeline(
     balance_strategy="oversample",
     epochs=10,
     learning_rate=1e-4,
-    model_dir="models/weights",
-    history_path="models/weights/train_history.csv",
+    model_dir="model/weights",
+    history_path="model/weights/train_history.csv",
     trainable=False,
 ):
     """Chạy toàn bộ pipeline huấn luyện: tải dữ liệu, xây model, train và lưu model."""

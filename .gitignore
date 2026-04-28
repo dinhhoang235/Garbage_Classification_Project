@@ -129,10 +129,7 @@ dmypy.json
 .DS_Store
 
 # Project specific
-models/*.pkl
-models/*.pth
-models/*.h5
-models
+model
 *.joblib
 *.pickle
 outputs/

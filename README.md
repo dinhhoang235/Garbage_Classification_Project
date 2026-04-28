@@ -117,7 +117,7 @@ Garbage_Classification_Project/
 ├── notebooks/ # Chứa file Jupyter Notebook để thử nghiệm
 │ └── exploration_v1.ipynb # Phân tích dữ liệu và chạy thử tiền xử lý
 │
-├── models/ # Lưu trữ file model sau khi huấn luyện
+├── model/ # Lưu trữ file model sau khi huấn luyện
 │ └── weights/ # Lưu mô hình và trọng số
 │
 ├── src/ # Mã nguồn chính của dự án
@@ -208,7 +208,7 @@ Pipeline huấn luyện dùng `src/train.py` và `src/training/pipeline.py`:
 3. Thêm `GlobalAveragePooling2D` để làm phẳng đặc trưng.
 4. Thêm lớp `Dense(num_classes, activation='softmax')` để dự đoán.
 5. Huấn luyện với callback: `ModelCheckpoint`, `EarlyStopping`, `CSVLogger`.
-6. Lưu model tốt nhất vào `models/weights/mobilenet_baseline_best.keras`.
+6. Lưu model tốt nhất vào `model/weights/mobilenet_baseline_best.keras`.
 
 Sơ đồ huấn luyện:
 
@@ -237,7 +237,7 @@ python src/evaluate.py
 Nếu muốn chỉ rõ model và file đầu vào:
 
 ```bash
-python src/evaluate.py --model_path models/weights/mobilenet_baseline_best.keras --base_dir data/raw/original --img_size 224 224 --batch_size 32
+python src/evaluate.py --model_path model/weights/mobilenet_baseline_best.keras --base_dir data/raw/original --img_size 224 224 --batch_size 32
 ```
 
 Kết quả đánh giá sẽ in ra `loss`, `accuracy`, `classification report` và lưu `confusion matrix` tại `reports/confusion_matrix.png`.

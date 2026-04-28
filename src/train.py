@@ -19,8 +19,8 @@ def parse_args():
         choices=["none", "oversample", "class_weight"],
         help="Data balancing strategy for training",
     )
-    parser.add_argument("--model_dir", type=str, default="models/weights", help="Directory to save trained model")
-    parser.add_argument("--history_path", type=str, default="models/weights/train_history.csv", help="CSV path for training history")
+    parser.add_argument("--model_dir", type=str, default="model/weights", help="Directory to save trained model")
+    parser.add_argument("--history_path", type=str, default="model/weights/train_history.csv", help="CSV path for training history")
     parser.add_argument("--report_path", type=str, default="reports/train/train.txt", help="Text report path for training results")
     parser.add_argument("--trainable", action="store_true", help="Unfreeze MobileNet base and fine-tune")
     parser.add_argument("--validation_split", type=float, default=0.15, help="Validation split ratio")
