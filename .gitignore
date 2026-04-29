@@ -146,7 +146,6 @@ data/
 *.zip
 *.tar.gz
 
-*.png
 *.json
 
 reports/
