@@ -2,9 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../widgets/profile_menu_item.dart';
 import '../../core/theme/app_colors.dart';
+import '../auth/login_screen.dart';
+import '../../models/user_model.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  final User? currentUser;
+  final VoidCallback onLogin;
+  final VoidCallback onLogout;
+
+  const ProfileScreen({
+    super.key,
+    required this.currentUser,
+    required this.onLogin,
+    required this.onLogout,
+  });
+
+  bool get isLoggedIn => currentUser != null;
 
   @override
   Widget build(BuildContext context) {
@@ -17,15 +30,30 @@ class ProfileScreen extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  _buildLevelCard(),
-                  const SizedBox(height: 24),
-                  ProfileMenuItem(icon: LucideIcons.user, title: 'Hồ sơ của tôi', onTap: () {}),
-                  ProfileMenuItem(icon: LucideIcons.trophy, title: 'Thành tích', trailing: '12', onTap: () {}),
+                  if (isLoggedIn) ...[
+                    _buildLevelCard(),
+                    const SizedBox(height: 24),
+                  ],
+                  ProfileMenuItem(
+                    icon: LucideIcons.user,
+                    title: 'Hồ sơ của tôi',
+                    onTap: () {
+                      if (!isLoggedIn) _navigateToLogin(context);
+                    },
+                  ),
+                  ProfileMenuItem(
+                    icon: LucideIcons.trophy,
+                    title: 'Thành tích',
+                    trailing: isLoggedIn ? currentUser!.achievementsCount.toString() : null,
+                    onTap: () {
+                      if (!isLoggedIn) _navigateToLogin(context);
+                    },
+                  ),
                   ProfileMenuItem(icon: LucideIcons.settings, title: 'Cài đặt', onTap: () {}),
                   ProfileMenuItem(icon: LucideIcons.bell, title: 'Thông báo', onTap: () {}),
                   ProfileMenuItem(icon: LucideIcons.info, title: 'Giới thiệu', onTap: () {}),
                   const SizedBox(height: 24),
-                  _buildLogoutButton(),
+                  isLoggedIn ? _buildLogoutButton() : _buildLoginButton(context),
                 ],
               ),
             ),
@@ -33,6 +61,16 @@ class ProfileScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _navigateToLogin(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+    ).then((_) {
+      // Mock: after coming back from login screen, assume logged in
+      onLogin();
+    });
   }
 
   Widget _buildHeader() {
@@ -48,25 +86,31 @@ class ProfileScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 40,
-            backgroundImage: NetworkImage('https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=1974&auto=format&fit=crop'),
+            backgroundColor: Colors.white.withAlpha(51),
+            backgroundImage: isLoggedIn
+                ? NetworkImage(currentUser!.avatarUrl)
+                : null,
+            child: !isLoggedIn
+                ? const Icon(LucideIcons.user, color: Colors.white, size: 40)
+                : null,
           ),
           const SizedBox(width: 20),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Minh Anh',
-                  style: TextStyle(
+                Text(
+                  isLoggedIn ? currentUser!.name : 'Khách',
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
-                  'minhanh@email.com',
+                  isLoggedIn ? currentUser!.phoneNumber : 'Đăng nhập để lưu lại quá trình',
                   style: TextStyle(
                     color: Colors.white.withAlpha(204),
                     fontSize: 14,
@@ -75,13 +119,14 @@ class ProfileScreen extends StatelessWidget {
               ],
             ),
           ),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(LucideIcons.edit3, color: Colors.white, size: 20),
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.white.withAlpha(51),
+          if (isLoggedIn)
+            IconButton(
+              onPressed: () {},
+              icon: const Icon(LucideIcons.edit3, color: Colors.white, size: 20),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.white.withAlpha(51),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -115,17 +160,17 @@ class ProfileScreen extends StatelessWidget {
                 child: const Icon(LucideIcons.award, color: AppColors.blue),
               ),
               const SizedBox(width: 16),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Level 7 - Eco Warrior',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      'Level ${currentUser!.level} - ${currentUser!.levelName}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     Text(
-                      '2.450 / 3.000 XP',
-                      style: TextStyle(color: AppColors.textTertiary, fontSize: 12),
+                      '${currentUser!.points.toString().replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]}.")} / 3.000 XP',
+                      style: const TextStyle(color: AppColors.textTertiary, fontSize: 12),
                     ),
                   ],
                 ),
@@ -136,7 +181,7 @@ class ProfileScreen extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
-              value: 0.82,
+              value: currentUser!.xpProgress,
               backgroundColor: AppColors.primaryLight,
               color: AppColors.primary,
               minHeight: 8,
@@ -147,10 +192,28 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildLoginButton(BuildContext context) {
+    return ElevatedButton(
+      onPressed: () => _navigateToLogin(context),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        minimumSize: const Size(double.infinity, 56),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        elevation: 0,
+      ),
+      child: const Text(
+        'Đăng nhập',
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
 
   Widget _buildLogoutButton() {
     return TextButton.icon(
-      onPressed: () {},
+      onPressed: onLogout,
       icon: const Icon(LucideIcons.logOut, color: AppColors.red, size: 20),
       label: const Text(
         'Đăng xuất',
@@ -163,3 +226,6 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 }
+
+
+

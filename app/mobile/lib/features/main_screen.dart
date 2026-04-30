@@ -6,6 +6,9 @@ import 'history/history_screen.dart';
 import 'scan/scan_screen.dart';
 import 'map/map_screen.dart';
 import 'profile/profile_screen.dart';
+import 'auth/login_screen.dart';
+import '../models/user_model.dart';
+import '../core/mock/mock_data.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -16,14 +19,45 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  User? _currentUser; // Global mock user state
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const HistoryScreen(),
-    const ScanScreen(),
-    const MapScreen(),
-    const ProfileScreen(),
-  ];
+  void _onLogin() {
+    setState(() {
+      _currentUser = MockData.currentUser;
+      _selectedIndex = 0; // Switch to home after login
+    });
+  }
+
+  void _onLogout() {
+    setState(() {
+      _currentUser = null;
+    });
+  }
+
+  void _requestLogin() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+    ).then((_) {
+      // Logic handled by login screen return or direct callback
+      _onLogin();
+    });
+  }
+
+  List<Widget> get _screens => [
+        HomeScreen(
+          currentUser: _currentUser,
+          onLoginRequested: _requestLogin,
+        ),
+        const HistoryScreen(),
+        const ScanScreen(),
+        const MapScreen(),
+        ProfileScreen(
+          currentUser: _currentUser,
+          onLogin: _onLogin,
+          onLogout: _onLogout,
+        ),
+      ];
 
   @override
   Widget build(BuildContext context) {
@@ -91,3 +125,5 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 }
+
+

@@ -4,9 +4,19 @@ import '../../widgets/eco_button.dart';
 import '../../widgets/waste_category_card.dart';
 import '../../widgets/history_item_card.dart';
 import '../../core/theme/app_colors.dart';
+import '../../models/user_model.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  final User? currentUser;
+  final VoidCallback? onLoginRequested;
+
+  const HomeScreen({
+    super.key,
+    this.currentUser,
+    this.onLoginRequested,
+  });
+
+  bool get isLoggedIn => currentUser != null;
 
   @override
   Widget build(BuildContext context) {
@@ -19,8 +29,13 @@ class HomeScreen extends StatelessWidget {
             children: [
               _buildHeader(),
               const SizedBox(height: 24),
-              _buildScoreCard(),
-              const SizedBox(height: 24),
+              if (isLoggedIn) ...[
+                _buildScoreCard(),
+                const SizedBox(height: 24),
+              ] else ...[
+                _buildGuestPrompt(),
+                const SizedBox(height: 24),
+              ],
               _buildScanBanner(),
               const SizedBox(height: 24),
               _buildSectionHeader('Danh mục rác', 'Xem tất cả'),
@@ -54,15 +69,15 @@ class HomeScreen extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  'Minh Anh',
-                  style: TextStyle(
+                  isLoggedIn ? currentUser!.name : 'Khách',
+                  style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
                   ),
                 ),
                 const SizedBox(width: 4),
-                const Text('🌿', style: TextStyle(fontSize: 18)),
+                Text(isLoggedIn ? '🌿' : '👋', style: const TextStyle(fontSize: 18)),
               ],
             ),
           ],
@@ -77,6 +92,46 @@ class HomeScreen extends StatelessWidget {
           child: const Icon(LucideIcons.bell, size: 20, color: AppColors.textPrimary),
         ),
       ],
+    );
+  }
+
+  Widget _buildGuestPrompt() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          colors: [AppColors.primary, AppColors.primaryDark],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Bắt đầu hành trình xanh!',
+            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Đăng nhập để theo dõi điểm thưởng và thành tích bảo vệ môi trường của bạn.',
+            style: TextStyle(color: Colors.white, fontSize: 13),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: onLoginRequested,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              elevation: 0,
+            ),
+            child: const Text('Đăng nhập ngay', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -102,9 +157,9 @@ class HomeScreen extends StatelessWidget {
                   'Điểm của bạn',
                   style: TextStyle(color: Colors.white, fontSize: 14),
                 ),
-                const Text(
-                  '2.450',
-                  style: TextStyle(
+                Text(
+                  currentUser!.points.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.'),
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
@@ -117,14 +172,14 @@ class HomeScreen extends StatelessWidget {
                     color: Colors.white.withAlpha(51),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(LucideIcons.award, color: Colors.white, size: 14),
-                      SizedBox(width: 4),
+                      const Icon(LucideIcons.award, color: Colors.white, size: 14),
+                      const SizedBox(width: 4),
                       Text(
-                        'Level 7 - Eco Warrior',
-                        style: TextStyle(color: Colors.white, fontSize: 12),
+                        'Level ${currentUser!.level} - ${currentUser!.levelName}',
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
                       ),
                     ],
                   ),
@@ -152,9 +207,9 @@ class HomeScreen extends StatelessWidget {
                     color: const Color(0xFFFFD700),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Text(
-                    'Level 7',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primaryDark),
+                  child: Text(
+                    'Level ${currentUser!.level}',
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primaryDark),
                   ),
                 ),
               ),
@@ -267,13 +322,15 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildRecentAchievement() {
-    return const HistoryItemCard(
+    return HistoryItemCard(
       title: 'Chai nhựa PET',
       type: 'Tái chế',
       time: 'Hôm nay, 08:30',
-      points: '+15 điểm',
+      points: isLoggedIn ? '+15 điểm' : 'Đăng nhập để tích điểm',
       icon: LucideIcons.glassWater,
       color: AppColors.blue,
     );
   }
 }
+
+
