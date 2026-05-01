@@ -13,6 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.core.config import settings
 from app.core.database import engine, get_db, Base
 from app.core.storage import init_minio, upload_image_to_minio
+from app.core.seed import seed_categories
 from app.routers import auth, users, categories, history
 
 # Create database tables
@@ -59,6 +60,7 @@ def load_model() -> tf.keras.Model:
 def startup_event() -> None:
     load_model()
     init_minio()
+    seed_categories()
 
 
 def preprocess_image(image_bytes: bytes) -> np.ndarray:

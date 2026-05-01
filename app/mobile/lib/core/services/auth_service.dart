@@ -1,49 +1,74 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'api_client.dart';
 import '../constants/api_constants.dart';
 
 class AuthService {
   final ApiClient _apiClient = ApiClient();
 
-  Future<bool> login(String username, String password) async {
+  /// Login with phone number and password.
+  /// Returns true if login succeeded and tokens are stored.
+  Future<bool> login(String phoneNumber, String password) async {
     try {
-      // API Login thường dùng FormData cho OAuth2 Password Request Form
-      // Hoặc dùng JSON data. Ở đây giả định dùng JSON data hoặc FormData tùy server của bạn.
-      // Trong FastAPI mặc định OAuth2PasswordRequestForm dùng application/x-www-form-urlencoded
+      // FastAPI OAuth2PasswordRequestForm expects form data
       final response = await _apiClient.dio.post(
         ApiConstants.login,
         data: FormData.fromMap({
-          'username': username,
+          'username': phoneNumber,
           'password': password,
         }),
       );
 
       if (response.statusCode == 200) {
         final accessToken = response.data['access_token'];
-        // Tùy API của bạn có trả về refresh_token không
-        final refreshToken = response.data['refresh_token'] ?? ''; 
+        final refreshToken = response.data['refresh_token'] ?? '';
 
-        // Lưu lại token
         await _apiClient.storage.write(key: 'access_token', value: accessToken);
         if (refreshToken.isNotEmpty) {
           await _apiClient.storage.write(key: 'refresh_token', value: refreshToken);
         }
-
         return true;
       }
       return false;
     } catch (e) {
-      print('Login error: $e');
+      debugPrint('AuthService.login error: $e');
       return false;
     }
   }
 
+  /// Register a new user account.
+  /// Returns true if registration succeeded.
+  Future<bool> register({
+    required String name,
+    required String phoneNumber,
+    required String password,
+    String? avatarUrl,
+  }) async {
+    try {
+      final response = await _apiClient.dio.post(
+        ApiConstants.register,
+        data: {
+          'name': name,
+          'phone_number': phoneNumber,
+          'password': password,
+          'avatar_url': avatarUrl,
+        },
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      debugPrint('AuthService.register error: $e');
+      return false;
+    }
+  }
+
+  /// Clear all stored tokens (logout).
   Future<void> logout() async {
     await _apiClient.storage.deleteAll();
   }
 
+  /// Check if an access token is stored.
   Future<bool> isLoggedIn() async {
     final token = await _apiClient.storage.read(key: 'access_token');
-    return token != null;
+    return token != null && token.isNotEmpty;
   }
 }

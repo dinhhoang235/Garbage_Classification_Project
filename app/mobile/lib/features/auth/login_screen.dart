@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/mock/mock_data.dart';
+import '../../core/services/auth_service.dart';
+import '../../core/services/user_service.dart';
+import '../../core/state/app_state.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -15,12 +17,14 @@ class _LoginScreenState extends State<LoginScreen> {
   late final TextEditingController _phoneController;
   late final TextEditingController _passwordController;
   bool _isPasswordVisible = false;
+  bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _phoneController = TextEditingController(text: MockData.currentUser.phoneNumber);
-    _passwordController = TextEditingController(text: '123456'); // Default mock password
+    _phoneController = TextEditingController();
+    _passwordController = TextEditingController();
   }
 
   @override
@@ -28,6 +32,61 @@ class _LoginScreenState extends State<LoginScreen> {
     _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    final phone = _phoneController.text.trim();
+    final password = _passwordController.text;
+
+    if (phone.isEmpty || password.isEmpty) {
+      setState(() {
+        _errorMessage = 'Vui lòng nhập đầy đủ số điện thoại và mật khẩu.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final authService = AuthService();
+      final success = await authService.login(phone, password);
+
+      if (!mounted) return;
+
+      if (success) {
+        // Fetch user profile and store in AppState
+        final user = await UserService().getProfile();
+        if (!mounted) return;
+        if (user != null) {
+          AppState().setUser(user);
+          // Pop back to previous screen
+          Navigator.pop(context);
+        } else {
+          setState(() {
+            _errorMessage = 'Không thể tải thông tin người dùng. Vui lòng thử lại.';
+          });
+        }
+      } else {
+        setState(() {
+          _errorMessage = 'Số điện thoại hoặc mật khẩu không đúng.';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Lỗi kết nối. Vui lòng kiểm tra mạng.';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -69,6 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
               controller: _phoneController,
               icon: LucideIcons.phone,
               keyboardType: TextInputType.phone,
+              maxLength: 10,
             ),
             const SizedBox(height: 20),
             _buildTextField(
@@ -84,25 +144,32 @@ class _LoginScreenState extends State<LoginScreen> {
                 });
               },
             ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () {},
-                child: const Text(
-                  'Quên mật khẩu?',
-                  style: TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.red.withAlpha(20),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.red.withAlpha(60)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(LucideIcons.alertCircle, color: AppColors.red, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: AppColors.red, fontSize: 13),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
+            ],
             const SizedBox(height: 32),
             ElevatedButton(
-              onPressed: () {
-                // Mock login logic
-                Navigator.pop(context);
-              },
+              onPressed: _isLoading ? null : _handleLogin,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -112,10 +179,19 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 elevation: 0,
               ),
-              child: const Text(
-                'Đăng nhập',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Text(
+                      'Đăng nhập',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
             ),
             const SizedBox(height: 40),
             Row(
@@ -127,7 +203,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 GestureDetector(
                   onTap: () {
-                    Navigator.push(
+                    Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(builder: (context) => const RegisterScreen()),
                     );
@@ -157,6 +233,7 @@ class _LoginScreenState extends State<LoginScreen> {
     bool isPasswordVisible = false,
     VoidCallback? onToggleVisibility,
     TextInputType? keyboardType,
+    int? maxLength,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -174,7 +251,10 @@ class _LoginScreenState extends State<LoginScreen> {
           controller: controller,
           obscureText: isPassword && !isPasswordVisible,
           keyboardType: keyboardType,
+          maxLength: maxLength,
+          onSubmitted: (_) => _handleLogin(),
           decoration: InputDecoration(
+            counterText: "",
             hintText: hint,
             hintStyle: const TextStyle(color: AppColors.textTertiary, fontSize: 14),
             prefixIcon: Icon(icon, size: 20, color: AppColors.textTertiary),

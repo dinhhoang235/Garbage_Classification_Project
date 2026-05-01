@@ -3,6 +3,9 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../stats/stats_screen.dart';
 import '../../widgets/history_item_card.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/services/history_service.dart';
+import '../../core/state/app_state.dart';
+import '../../models/history_model.dart';
 import 'history_detail_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -16,79 +19,59 @@ class HistoryScreen extends StatefulWidget {
 class _HistoryScreenState extends State<HistoryScreen> {
   String _selectedFilter = 'Tất cả';
   String _selectedSort = 'Mới nhất';
+  bool _isLoading = true;
+  String? _errorMessage;
+  List<HistoryItem> _allHistoryItems = [];
 
-  final List<Map<String, dynamic>> _allHistoryItems = [
-    {
-      'title': 'Chai nhựa PET',
-      'type': 'Tái chế',
-      'time': '08:30',
-      'points': '+15 điểm',
-      'icon': LucideIcons.glassWater,
-      'color': AppColors.blue,
-      'date': 'Hôm nay',
-      'timestamp': DateTime(2026, 5, 1, 8, 30),
-      'location': 'Công viên Tao Đàn, Quận 1',
-    },
-    {
-      'title': 'Vỏ chuối',
-      'type': 'Hữu cơ',
-      'time': '07:45',
-      'points': '+10 điểm',
-      'icon': LucideIcons.leaf,
-      'color': AppColors.primary,
-      'date': 'Hôm nay',
-      'timestamp': DateTime(2026, 5, 1, 7, 45),
-      'location': 'Chung cư Vinhomes, Bình Thạnh',
-    },
-    {
-      'title': 'Lon nhôm',
-      'type': 'Tái chế',
-      'time': '07:20',
-      'points': '+15 điểm',
-      'icon': LucideIcons.hammer,
-      'color': Colors.blueGrey,
-      'date': 'Hôm nay',
-      'timestamp': DateTime(2026, 5, 1, 7, 20),
-      'location': 'Đại học Bách Khoa, Quận 10',
-    },
-    {
-      'title': 'Pin tiểu',
-      'type': 'Nguy hại',
-      'time': '18:30',
-      'points': '+20 điểm',
-      'icon': LucideIcons.zap,
-      'color': AppColors.red,
-      'date': 'Hôm nay',
-      'timestamp': DateTime(2026, 4, 30, 18, 30),
-      'location': 'Trạm thu gom #12, Quận 1',
-    },
-    {
-      'title': 'Hộp giấy',
-      'type': 'Tái chế',
-      'time': '17:10',
-      'points': '+10 điểm',
-      'icon': LucideIcons.fileText,
-      'color': AppColors.orange,
-      'date': 'Hôm qua',
-      'timestamp': DateTime(2026, 4, 30, 17, 10),
-      'location': 'Siêu thị Co.op Mart, Quận 3',
-    },
-  ];
+  final _historyService = HistoryService();
 
-  List<Map<String, dynamic>> get _filteredItems {
-    List<Map<String, dynamic>> items = _selectedFilter == 'Tất cả' ? List.from(_allHistoryItems) : _allHistoryItems.where((item) => item['type'] == _selectedFilter).toList();
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    if (!AppState().isLoggedIn) {
+      setState(() {
+        _isLoading = false;
+        _allHistoryItems = [];
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final items = await _historyService.getHistory();
+      if (mounted) {
+        setState(() {
+          _allHistoryItems = items;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Không thể tải lịch sử. Vui lòng thử lại.';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  List<HistoryItem> get _filteredItems {
+    List<HistoryItem> items = _selectedFilter == 'Tất cả'
+        ? List.from(_allHistoryItems)
+        : _allHistoryItems.where((item) => item.type == _selectedFilter).toList();
 
     items.sort((a, b) {
-      final DateTime? dateA = a['timestamp'] as DateTime?;
-      final DateTime? dateB = b['timestamp'] as DateTime?;
-
-      if (dateA == null || dateB == null) return 0;
-
-      if (_selectedSort == 'Mới nhất') {
-        return dateB.compareTo(dateA);
-      } else {
-        return dateA.compareTo(dateB);
-      }
+      return _selectedSort == 'Mới nhất'
+          ? b.createdAt.compareTo(a.createdAt)
+          : a.createdAt.compareTo(b.createdAt);
     });
     return items;
   }
@@ -96,86 +79,155 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final filteredItems = _filteredItems;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Lịch sử', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+        title: Text('Lịch sử',
+            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
         centerTitle: false,
         actions: [
           IconButton(
             onPressed: () {
               Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const StatsScreen()),
-              );
+                  context, MaterialPageRoute(builder: (context) => const StatsScreen()));
             },
             icon: Icon(LucideIcons.barChart2, size: 20, color: theme.iconTheme.color),
           ),
           IconButton(
-            onPressed: () {
-              _showFilterBottomSheet(context, theme);
-            },
+            onPressed: () => _showFilterBottomSheet(context, theme),
             icon: Icon(LucideIcons.filter, size: 20, color: theme.iconTheme.color),
           ),
         ],
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: Column(
-        children: [
-          _buildFilterTabs(theme),
-          Expanded(
-            child: filteredItems.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(LucideIcons.searchX, size: 64, color: theme.disabledColor),
-                        const SizedBox(height: 16),
-                        Text('Không có hoạt động nào', style: TextStyle(color: theme.disabledColor)),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    itemCount: filteredItems.length,
-                    itemBuilder: (context, index) {
-                      final item = filteredItems[index];
-                      bool showDate = index == 0 || filteredItems[index - 1]['date'] != item['date'];
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (showDate) _buildDateHeader(item['date'], theme),
-                          HistoryItemCard(
-                            title: item['title'],
-                            type: item['type'],
-                            time: item['time'],
-                            points: item['points'],
-                            icon: item['icon'],
-                            color: item['color'],
-                            onTap: () async {
-                              final result = await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => HistoryDetailScreen(item: item),
-                                ),
-                              );
-                              
-                              if (result == 'go_to_map' && widget.onTabRequested != null) {
-                                widget.onTabRequested!(3); // Index 3 is Map tab
-                              }
-                            },
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-          ),
-        ],
+      body: RefreshIndicator(
+        onRefresh: _loadHistory,
+        color: AppColors.primary,
+        child: Column(
+          children: [
+            _buildFilterTabs(theme),
+            Expanded(child: _buildBody(theme)),
+          ],
+        ),
       ),
     );
+  }
+
+  Widget _buildBody(ThemeData theme) {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+        ),
+      );
+    }
+
+    if (!AppState().isLoggedIn) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(LucideIcons.logIn, size: 64, color: theme.disabledColor),
+            const SizedBox(height: 16),
+            Text('Đăng nhập để xem lịch sử',
+                style: TextStyle(color: theme.disabledColor, fontSize: 16)),
+            const SizedBox(height: 8),
+            Text('Mỗi lần quét rác sẽ được ghi lại tại đây.',
+                style: TextStyle(color: theme.disabledColor, fontSize: 13)),
+          ],
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(LucideIcons.wifiOff, size: 64, color: theme.disabledColor),
+            const SizedBox(height: 16),
+            Text(_errorMessage!, style: TextStyle(color: theme.disabledColor)),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadHistory,
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              child: const Text('Thử lại', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final filteredItems = _filteredItems;
+    if (filteredItems.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(LucideIcons.searchX, size: 64, color: theme.disabledColor),
+            const SizedBox(height: 16),
+            Text(
+              _allHistoryItems.isEmpty ? 'Chưa có hoạt động nào' : 'Không tìm thấy kết quả',
+              style: TextStyle(color: theme.disabledColor),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      itemCount: filteredItems.length,
+      itemBuilder: (context, index) {
+        final item = filteredItems[index];
+        final showDate = index == 0 ||
+            filteredItems[index - 1].formattedDate != item.formattedDate;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (showDate) _buildDateHeader(item.formattedDate, theme),
+            HistoryItemCard(
+              title: item.displayName,
+              type: item.type,
+              time: item.formattedTime,
+              points: '+${item.pointsEarned} điểm',
+              icon: item.icon,
+              color: item.color,
+              onTap: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HistoryDetailScreen(item: _buildDetailMap(item)),
+                  ),
+                );
+                if (result == 'go_to_map' && widget.onTabRequested != null) {
+                  widget.onTabRequested!(3);
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Map<String, dynamic> _buildDetailMap(HistoryItem item) {
+    return {
+      'title': item.displayName,
+      'type': item.type,
+      'time': item.formattedTime,
+      'points': '+${item.pointsEarned} điểm',
+      'icon': item.icon,
+      'color': item.color,
+      'date': item.formattedDate,
+      'timestamp': item.createdAt,
+      'location': item.location ?? '',
+      'image_url': item.imageUrl,
+      'confidence': item.confidence,
+    };
   }
 
   void _showFilterBottomSheet(BuildContext context, ThemeData theme) {
@@ -197,10 +249,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Bộ lọc & Sắp xếp',
-                        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                      ),
+                      Text('Bộ lọc & Sắp xếp',
+                          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
                       IconButton(
                         onPressed: () => Navigator.pop(context),
                         icon: Icon(LucideIcons.x, color: theme.iconTheme.color),
@@ -208,31 +258,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  Text(
-                    'Sắp xếp theo',
-                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                  ),
+                  Text('Sắp xếp theo',
+                      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
-                  _buildFilterOption(
-                    LucideIcons.clock,
-                    'Mới nhất',
-                    _selectedSort == 'Mới nhất',
-                    theme,
-                    () {
-                      setModalState(() => _selectedSort = 'Mới nhất');
-                      setState(() {});
-                    },
-                  ),
-                  _buildFilterOption(
-                    LucideIcons.history,
-                    'Cũ nhất',
-                    _selectedSort == 'Cũ nhất',
-                    theme,
-                    () {
-                      setModalState(() => _selectedSort = 'Cũ nhất');
-                      setState(() {});
-                    },
-                  ),
+                  _buildFilterOption(LucideIcons.clock, 'Mới nhất', _selectedSort == 'Mới nhất',
+                      theme, () {
+                    setModalState(() => _selectedSort = 'Mới nhất');
+                    setState(() {});
+                  }),
+                  _buildFilterOption(LucideIcons.history, 'Cũ nhất', _selectedSort == 'Cũ nhất',
+                      theme, () {
+                    setModalState(() => _selectedSort = 'Cũ nhất');
+                    setState(() {});
+                  }),
                   const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
@@ -251,7 +289,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _buildFilterOption(IconData icon, String label, bool isSelected, ThemeData theme, VoidCallback onTap) {
+  Widget _buildFilterOption(
+      IconData icon, String label, bool isSelected, ThemeData theme, VoidCallback onTap) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(icon, color: isSelected ? AppColors.primary : theme.iconTheme.color, size: 20),
@@ -262,7 +301,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
       ),
-      trailing: isSelected ? const Icon(LucideIcons.check, color: AppColors.primary, size: 20) : null,
+      trailing: isSelected
+          ? const Icon(LucideIcons.check, color: AppColors.primary, size: 20)
+          : null,
       onTap: onTap,
     );
   }
@@ -279,11 +320,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             label: Text(label),
             selected: isSelected,
             onSelected: (val) {
-              if (val) {
-                setState(() {
-                  _selectedFilter = label;
-                });
-              }
+              if (val) setState(() => _selectedFilter = label);
             },
             selectedColor: AppColors.primary,
             labelStyle: TextStyle(
@@ -294,7 +331,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
             backgroundColor: theme.cardColor,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
-              side: BorderSide(color: isSelected ? AppColors.primary : theme.dividerColor.withAlpha(100)),
+              side: BorderSide(
+                  color: isSelected ? AppColors.primary : theme.dividerColor.withAlpha(100)),
             ),
             showCheckmark: false,
           );

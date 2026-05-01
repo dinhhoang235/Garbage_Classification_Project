@@ -1,11 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/mock/mock_data.dart';
+import '../../core/services/category_service.dart';
 import '../../models/waste_category_model.dart';
 
-class CategoryListScreen extends StatelessWidget {
+class CategoryListScreen extends StatefulWidget {
   const CategoryListScreen({super.key});
+
+  @override
+  State<CategoryListScreen> createState() => _CategoryListScreenState();
+}
+
+class _CategoryListScreenState extends State<CategoryListScreen> {
+  List<WasteCategory> _categories = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    final categories = await CategoryService().getCategories();
+    if (mounted) {
+      setState(() {
+        _categories = categories;
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,14 +46,34 @@ class CategoryListScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(20),
-        itemCount: MockData.categories.length,
-        itemBuilder: (context, index) {
-          final category = MockData.categories[index];
-          return _buildCategoryCard(category, theme);
-        },
-      ),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+              ),
+            )
+          : _categories.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(LucideIcons.info, size: 64, color: theme.disabledColor),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Không tìm thấy danh mục nào',
+                        style: TextStyle(color: theme.disabledColor),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: _categories.length,
+                  itemBuilder: (context, index) {
+                    final category = _categories[index];
+                    return _buildCategoryCard(category, theme);
+                  },
+                ),
     );
   }
 
@@ -80,49 +124,57 @@ class CategoryListScreen extends StatelessWidget {
               children: [
                 Divider(color: theme.dividerColor),
                 const SizedBox(height: 12),
-                const Text(
-                  'Ví dụ:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: category.examples.map((example) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                if (category.examples.isNotEmpty) ...[
+                  const Text(
+                    'Ví dụ:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: category.examples
+                        .map((example) => Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: theme.brightness == Brightness.dark
+                                    ? Colors.white.withAlpha(13)
+                                    : AppColors.background,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: theme.dividerColor),
+                              ),
+                              child: Text(example, style: const TextStyle(fontSize: 12)),
+                            ))
+                        .toList(),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (category.disposalGuide.isNotEmpty) ...[
+                  const Text(
+                    'Hướng dẫn xử lý:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: theme.brightness == Brightness.dark ? Colors.white.withAlpha(13) : AppColors.background,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: theme.dividerColor),
+                      color: category.color.withAlpha(13),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(example, style: const TextStyle(fontSize: 12)),
-                  )).toList(),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Hướng dẫn xử lý:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: category.color.withAlpha(13),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(LucideIcons.info, color: category.color, size: 16),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          category.disposalGuide,
-                          style: TextStyle(fontSize: 13, color: category.color, fontWeight: FontWeight.w500),
+                    child: Row(
+                      children: [
+                        Icon(LucideIcons.info, color: category.color, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            category.disposalGuide,
+                            style: TextStyle(fontSize: 13, color: category.color, fontWeight: FontWeight.w500),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

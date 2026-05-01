@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../widgets/profile_menu_item.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/services/auth_service.dart';
 import '../auth/login_screen.dart';
 import '../../models/user_model.dart';
 import 'my_profile_screen.dart';
@@ -113,10 +114,13 @@ class ProfileScreen extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const LoginScreen()),
-    ).then((_) {
-      // Mock: after coming back from login screen, assume logged in
-      onLogin();
-    });
+    );
+    // AppState is updated by LoginScreen directly
+  }
+
+  Future<void> _handleLogout() async {
+    await AuthService().logout();
+    onLogout();
   }
 
   Widget _buildHeader() {
@@ -135,12 +139,21 @@ class ProfileScreen extends StatelessWidget {
           CircleAvatar(
             radius: 40,
             backgroundColor: Colors.white.withAlpha(51),
-            backgroundImage: isLoggedIn
+            backgroundImage: isLoggedIn && currentUser!.avatarUrl.isNotEmpty
                 ? NetworkImage(currentUser!.avatarUrl)
                 : null,
-            child: !isLoggedIn
-                ? const Icon(LucideIcons.user, color: Colors.white, size: 40)
-                : null,
+            child: isLoggedIn && currentUser!.avatarUrl.isEmpty
+                ? Text(
+                    currentUser!.initials,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )
+                : (!isLoggedIn
+                    ? const Icon(LucideIcons.user, color: Colors.white, size: 40)
+                    : null),
           ),
           const SizedBox(width: 20),
           Expanded(
@@ -260,16 +273,18 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildLogoutButton() {
-    return TextButton.icon(
-      onPressed: onLogout,
-      icon: const Icon(LucideIcons.logOut, color: AppColors.red, size: 20),
-      label: const Text(
-        'Đăng xuất',
-        style: TextStyle(color: AppColors.red, fontSize: 16, fontWeight: FontWeight.bold),
-      ),
-      style: TextButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        minimumSize: const Size(double.infinity, 0),
+    return Builder(
+      builder: (context) => TextButton.icon(
+        onPressed: () => _handleLogout(),
+        icon: const Icon(LucideIcons.logOut, color: AppColors.red, size: 20),
+        label: const Text(
+          'Đăng xuất',
+          style: TextStyle(color: AppColors.red, fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          minimumSize: const Size(double.infinity, 0),
+        ),
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../core/theme/app_colors.dart';
+import '../core/state/app_state.dart';
 import 'home/home_screen.dart';
 import 'history/history_screen.dart';
 import 'scan/scan_screen.dart';
@@ -8,8 +9,6 @@ import 'map/map_screen.dart';
 import 'profile/profile_screen.dart';
 import 'auth/login_screen.dart';
 import '../models/user_model.dart';
-import '../core/mock/mock_data.dart';
-
 import 'home/category_list_screen.dart';
 import 'profile/achievements_screen.dart';
 import '../widgets/notifications_bottom_sheet.dart';
@@ -23,97 +22,111 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  User? _currentUser; // Global mock user state
+  late List<Widget> _screens;
 
-  void _onLogin() {
-    setState(() {
-      _currentUser = MockData.currentUser;
-      _selectedIndex = 0; // Switch to home after login
-    });
+  @override
+  void initState() {
+    super.initState();
+    _initScreens();
+    // Listen to user changes to rebuild
+    AppState().userNotifier.addListener(_onUserChanged);
   }
 
+  void _initScreens() {
+    _screens = [
+      HomeScreen(
+        currentUser: _currentUser,
+        onLoginRequested: _requestLogin,
+        onScanRequested: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ScanScreen(),
+              fullscreenDialog: true,
+            ),
+          );
+        },
+        onHistoryRequested: () {
+          setState(() {
+            _selectedIndex = 1;
+          });
+        },
+        onCategoryRequested: (category) {
+          if (category == 'all') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const CategoryListScreen()),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Xem danh mục: $category'),
+                behavior: SnackBarBehavior.floating,
+                backgroundColor: AppColors.primary,
+              ),
+            );
+          }
+        },
+        onNotificationRequested: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => const NotificationsBottomSheet(),
+          );
+        },
+        onAchievementsRequested: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AchievementsScreen(user: _currentUser),
+            ),
+          );
+        },
+      ),
+      HistoryScreen(
+        onTabRequested: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+      ),
+      const SizedBox.shrink(), // Placeholder for Scan tab
+      const MapScreen(),
+      ProfileScreen(
+        currentUser: _currentUser,
+        onLogin: _requestLogin,
+        onLogout: _onLogout,
+      ),
+    ];
+  }
+
+  @override
+  void dispose() {
+    AppState().userNotifier.removeListener(_onUserChanged);
+    super.dispose();
+  }
+
+  void _onUserChanged() {
+    if (mounted) {
+      setState(() {
+        _initScreens(); // Update screens when user profile changes
+      });
+    }
+  }
+
+  User? get _currentUser => AppState().currentUser;
+
   void _onLogout() {
-    setState(() {
-      _currentUser = null;
-    });
+    AppState().setUser(null);
   }
 
   void _requestLogin() {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const LoginScreen()),
-    ).then((_) {
-      // Logic handled by login screen return or direct callback
-      _onLogin();
-    });
+    );
   }
-
-  List<Widget> get _screens => [
-        HomeScreen(
-          currentUser: _currentUser,
-          onLoginRequested: _requestLogin,
-          onScanRequested: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const ScanScreen(),
-                fullscreenDialog: true,
-              ),
-            );
-          },
-          onHistoryRequested: () {
-            setState(() {
-              _selectedIndex = 1; // Switch to History tab
-            });
-          },
-          onCategoryRequested: (category) {
-            if (category == 'all') {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const CategoryListScreen()),
-              );
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Xem danh mục: $category'),
-                  behavior: SnackBarBehavior.floating,
-                  backgroundColor: AppColors.primary,
-                ),
-              );
-            }
-          },
-          onNotificationRequested: () {
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (context) => const NotificationsBottomSheet(),
-            );
-          },
-          onAchievementsRequested: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => AchievementsScreen(user: _currentUser),
-              ),
-            );
-          },
-        ),
-        HistoryScreen(
-          onTabRequested: (index) {
-            setState(() {
-              _selectedIndex = index;
-            });
-          },
-        ),
-        const SizedBox.shrink(), // Placeholder for Scan tab
-        const MapScreen(),
-        ProfileScreen(
-          currentUser: _currentUser,
-          onLogin: _onLogin,
-          onLogout: _onLogout,
-        ),
-      ];
 
   @override
   Widget build(BuildContext context) {
@@ -191,5 +204,3 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 }
-
-

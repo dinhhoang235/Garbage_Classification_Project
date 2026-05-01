@@ -1,31 +1,48 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 import 'core/theme/app_theme.dart';
+import 'core/services/theme_service.dart';
+import 'core/services/auth_service.dart';
+import 'core/services/user_service.dart';
+import 'core/state/app_state.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'features/main_screen.dart';
 
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'core/services/theme_service.dart';
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Load environment variables
-  await dotenv.load(fileName: ".env");
-  
-  // Initialize services
+  await dotenv.load(fileName: '.env');
+
+  // Initialize theme service
   final themeService = ThemeService();
   await themeService.init();
-  
+
+  // Check onboarding
   final prefs = await SharedPreferences.getInstance();
   final onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
+
+  // Try to auto-login from stored token
+  final authService = AuthService();
+  final isLoggedIn = await authService.isLoggedIn();
+  if (isLoggedIn) {
+    final user = await UserService().getProfile();
+    if (user != null) {
+      AppState().setUser(user);
+    } else {
+      // Token invalid, clean up
+      await authService.logout();
+    }
+  }
 
   runApp(MyApp(onboardingCompleted: onboardingCompleted));
 }
 
 class MyApp extends StatelessWidget {
   final bool onboardingCompleted;
-  
+
   const MyApp({super.key, required this.onboardingCompleted});
 
   @override
@@ -45,4 +62,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-

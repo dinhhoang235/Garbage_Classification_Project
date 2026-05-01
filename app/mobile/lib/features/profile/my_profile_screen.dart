@@ -97,7 +97,20 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
               children: [
                 CircleAvatar(
                   radius: 50,
-                  backgroundImage: NetworkImage(widget.user.avatarUrl),
+                  backgroundColor: AppColors.primary,
+                  backgroundImage: widget.user.avatarUrl.isNotEmpty
+                      ? NetworkImage(widget.user.avatarUrl)
+                      : null,
+                  child: widget.user.avatarUrl.isEmpty
+                      ? Text(
+                          widget.user.initials,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      : null,
                 ),
                 if (_isEditing)
                   Container(

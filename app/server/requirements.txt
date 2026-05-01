@@ -9,7 +9,6 @@ pydantic~=1.10.0
 python-multipart
 email-validator
 pyjwt
-passlib
 bcrypt
 tensorflow>=2.12
 numpy

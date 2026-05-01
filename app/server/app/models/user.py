@@ -13,5 +13,24 @@ class User(Base):
     points = Column(Integer, default=0)
     level = Column(Integer, default=1)
     xp_progress = Column(Float, default=0.0)
+    achievements_count = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    @property
+    def level_name(self) -> str:
+        names = [
+            'Người mới',
+            'Người khám phá',
+            'Người bạn xanh',
+            'Người bảo vệ',
+            'Chiến binh Eco',
+            'Người hùng hành tinh',
+            'Nhà vô địch Eco',
+            'Bậc thầy xanh',
+            'Huyền thoại Eco',
+            'Thần Eco',
+        ]
+        if self.level <= 0: return names[0]
+        if self.level > len(names): return names[-1]
+        return names[self.level - 1]
