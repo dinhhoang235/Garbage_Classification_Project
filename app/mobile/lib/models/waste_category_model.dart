@@ -18,4 +18,26 @@ class WasteCategory {
     required this.examples,
     required this.disposalGuide,
   });
+
+  factory WasteCategory.fromJson(Map<String, dynamic> json) {
+    return WasteCategory(
+      id: json['id']?.toString() ?? '',
+      name: json['name'] ?? '',
+      description: json['description'] ?? '',
+      icon: Icons.category, // Fallback icon
+      color: Colors.green, // Fallback color
+      examples: List<String>.from(json['examples'] ?? []),
+      disposalGuide: json['disposal_guide'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'examples': examples,
+      'disposal_guide': disposalGuide,
+    };
+  }
 }

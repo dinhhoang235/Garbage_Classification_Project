@@ -4,10 +4,14 @@ import 'core/theme/app_theme.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'features/main_screen.dart';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/services/theme_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Load environment variables
+  await dotenv.load(fileName: ".env");
   
   // Initialize services
   final themeService = ThemeService();
