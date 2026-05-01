@@ -11,13 +11,23 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import settings
-from app.core.database import engine, get_db
+from app.core.database import engine, get_db, Base
+from app.core.storage import init_minio, upload_image_to_minio
+from app.routers import auth, users, categories, history
+
+# Create database tables
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Garbage Classification API",
     description="FastAPI backend để nhận ảnh, chạy model Keras và trả nhãn rác.",
     version="1.0.0",
 )
+
+app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(categories.router)
+app.include_router(history.router)
 
 CLASS_NAMES = [
     "battery",
@@ -48,6 +58,7 @@ def load_model() -> tf.keras.Model:
 @app.on_event("startup")
 def startup_event() -> None:
     load_model()
+    init_minio()
 
 
 def preprocess_image(image_bytes: bytes) -> np.ndarray:
@@ -105,6 +116,9 @@ async def predict(file: UploadFile = File(...), db=Depends(get_db)) -> JSONRespo
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
+    # Upload to MinIO
+    image_url = upload_image_to_minio(image_bytes, file.content_type)
+
     predictions = load_model().predict(data)
     if predictions.ndim == 2:
         predictions = predictions[0]
@@ -114,6 +128,7 @@ async def predict(file: UploadFile = File(...), db=Depends(get_db)) -> JSONRespo
     result = {
         "label": CLASS_NAMES[top_index],
         "confidence": top_score,
+        "image_url": image_url,
         "scores": {CLASS_NAMES[i]: float(predictions[i]) for i in range(len(CLASS_NAMES))},
     }
     return JSONResponse(content=result)

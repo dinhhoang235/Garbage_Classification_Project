@@ -14,3 +14,4 @@ bcrypt
 tensorflow>=2.12
 numpy
 pillow
+minio
