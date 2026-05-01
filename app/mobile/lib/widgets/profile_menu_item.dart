@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import '../core/theme/app_colors.dart';
 
 class ProfileMenuItem extends StatelessWidget {
   final IconData icon;
@@ -18,14 +17,15 @@ class ProfileMenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         onTap: onTap,
-        leading: Icon(icon, color: AppColors.textPrimary, size: 22),
+        leading: Icon(icon, color: theme.iconTheme.color, size: 22),
         title: Text(
           title,
-          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
+          style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -33,10 +33,10 @@ class ProfileMenuItem extends StatelessWidget {
             if (trailing != null)
               Text(
                 trailing!,
-                style: const TextStyle(color: AppColors.textTertiary, fontSize: 14),
+                style: TextStyle(color: theme.textTheme.labelLarge?.color, fontSize: 14),
               ),
             const SizedBox(width: 8),
-            const Icon(LucideIcons.chevronRight, color: AppColors.textTertiary, size: 18),
+            Icon(LucideIcons.chevronRight, color: theme.disabledColor, size: 18),
           ],
         ),
         shape: RoundedRectangleBorder(

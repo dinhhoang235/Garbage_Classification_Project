@@ -4,6 +4,11 @@ import '../../widgets/profile_menu_item.dart';
 import '../../core/theme/app_colors.dart';
 import '../auth/login_screen.dart';
 import '../../models/user_model.dart';
+import 'my_profile_screen.dart';
+import 'achievements_screen.dart';
+import 'settings_screen.dart';
+import 'notifications_screen.dart';
+import 'about_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   final User? currentUser;
@@ -31,14 +36,21 @@ class ProfileScreen extends StatelessWidget {
               child: Column(
                 children: [
                   if (isLoggedIn) ...[
-                    _buildLevelCard(),
+                    _buildLevelCard(context),
                     const SizedBox(height: 24),
                   ],
                   ProfileMenuItem(
                     icon: LucideIcons.user,
                     title: 'Hồ sơ của tôi',
                     onTap: () {
-                      if (!isLoggedIn) _navigateToLogin(context);
+                      if (!isLoggedIn) {
+                        _navigateToLogin(context);
+                      } else {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => MyProfileScreen(user: currentUser!)),
+                        );
+                      }
                     },
                   ),
                   ProfileMenuItem(
@@ -46,12 +58,46 @@ class ProfileScreen extends StatelessWidget {
                     title: 'Thành tích',
                     trailing: isLoggedIn ? currentUser!.achievementsCount.toString() : null,
                     onTap: () {
-                      if (!isLoggedIn) _navigateToLogin(context);
+                      if (!isLoggedIn) {
+                        _navigateToLogin(context);
+                      } else {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const AchievementsScreen()),
+                        );
+                      }
                     },
                   ),
-                  ProfileMenuItem(icon: LucideIcons.settings, title: 'Cài đặt', onTap: () {}),
-                  ProfileMenuItem(icon: LucideIcons.bell, title: 'Thông báo', onTap: () {}),
-                  ProfileMenuItem(icon: LucideIcons.info, title: 'Giới thiệu', onTap: () {}),
+                  ProfileMenuItem(
+                    icon: LucideIcons.settings,
+                    title: 'Cài đặt',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                      );
+                    },
+                  ),
+                  ProfileMenuItem(
+                    icon: LucideIcons.bell,
+                    title: 'Thông báo',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                      );
+                    },
+                  ),
+                  ProfileMenuItem(
+                    icon: LucideIcons.info,
+                    title: 'Giới thiệu',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const AboutScreen()),
+                      );
+                    },
+                  ),
                   const SizedBox(height: 24),
                   isLoggedIn ? _buildLogoutButton() : _buildLoginButton(context),
                 ],
@@ -119,26 +165,19 @@ class ProfileScreen extends StatelessWidget {
               ],
             ),
           ),
-          if (isLoggedIn)
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(LucideIcons.edit3, color: Colors.white, size: 20),
-              style: IconButton.styleFrom(
-                backgroundColor: Colors.white.withAlpha(51),
-              ),
-            ),
         ],
       ),
     );
   }
 
-  Widget _buildLevelCard() {
+  Widget _buildLevelCard(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: theme.dividerColor),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withAlpha(13),
@@ -170,7 +209,7 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     Text(
                       '${currentUser!.points.toString().replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]}.")} / 3.000 XP',
-                      style: const TextStyle(color: AppColors.textTertiary, fontSize: 12),
+                      style: TextStyle(color: theme.textTheme.bodyMedium?.color, fontSize: 12),
                     ),
                   ],
                 ),
@@ -182,7 +221,7 @@ class ProfileScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
               value: currentUser!.xpProgress,
-              backgroundColor: AppColors.primaryLight,
+              backgroundColor: theme.brightness == Brightness.dark ? Colors.white.withAlpha(26) : AppColors.primaryLight,
               color: AppColors.primary,
               minHeight: 8,
             ),

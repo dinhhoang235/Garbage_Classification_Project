@@ -5,21 +5,31 @@ import '../../widgets/waste_category_card.dart';
 import '../../widgets/history_item_card.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/user_model.dart';
+import '../../core/mock/mock_data.dart';
 
 class HomeScreen extends StatelessWidget {
   final User? currentUser;
   final VoidCallback? onLoginRequested;
+  final VoidCallback? onScanRequested;
+  final VoidCallback? onHistoryRequested;
+  final Function(String)? onCategoryRequested;
+  final VoidCallback? onNotificationRequested;
 
   const HomeScreen({
     super.key,
     this.currentUser,
     this.onLoginRequested,
+    this.onScanRequested,
+    this.onHistoryRequested,
+    this.onCategoryRequested,
+    this.onNotificationRequested,
   });
 
   bool get isLoggedIn => currentUser != null;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -27,7 +37,7 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(),
+              _buildHeader(theme),
               const SizedBox(height: 24),
               if (isLoggedIn) ...[
                 _buildScoreCard(),
@@ -36,13 +46,13 @@ class HomeScreen extends StatelessWidget {
                 _buildGuestPrompt(),
                 const SizedBox(height: 24),
               ],
-              _buildScanBanner(),
+              _buildScanBanner(theme),
               const SizedBox(height: 24),
-              _buildSectionHeader('Danh mục rác', 'Xem tất cả'),
+              _buildSectionHeader('Danh mục rác', 'Xem tất cả', () => onCategoryRequested?.call('all'), theme),
               const SizedBox(height: 16),
               _buildCategoryGrid(),
               const SizedBox(height: 24),
-              _buildSectionHeader('Thành tích gần đây', 'Xem tất cả'),
+              _buildSectionHeader('Thành tích gần đây', 'Xem tất cả', onHistoryRequested, theme),
               const SizedBox(height: 16),
               _buildRecentAchievement(),
             ],
@@ -52,28 +62,56 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader() {
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 12) {
+      return 'Chào buổi sáng,';
+    } else if (hour >= 12 && hour < 18) {
+      return 'Chào buổi chiều,';
+    } else {
+      return 'Chào buổi tối,';
+    }
+  }
+
+  String _getGreetingEmoji() {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 12) {
+      return '🌅';
+    } else if (hour >= 12 && hour < 18) {
+      return '☀️';
+    } else {
+      return '🌙';
+    }
+  }
+
+  Widget _buildHeader(ThemeData theme) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Chào buổi sáng,',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
+            Row(
+              children: [
+                Text(
+                  _getGreeting(),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: theme.textTheme.bodyMedium?.color,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(_getGreetingEmoji(), style: const TextStyle(fontSize: 14)),
+              ],
             ),
             Row(
               children: [
                 Text(
                   isLoggedIn ? currentUser!.name : 'Khách',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                    color: theme.textTheme.titleLarge?.color,
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -82,14 +120,17 @@ class HomeScreen extends StatelessWidget {
             ),
           ],
         ),
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border),
+        GestureDetector(
+          onTap: onNotificationRequested,
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: theme.cardColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: theme.dividerColor),
+            ),
+            child: Icon(LucideIcons.bell, size: 20, color: theme.iconTheme.color),
           ),
-          child: const Icon(LucideIcons.bell, size: 20, color: AppColors.textPrimary),
         ),
       ],
     );
@@ -220,11 +261,11 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildScanBanner() {
+  Widget _buildScanBanner(ThemeData theme) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.primaryLight,
+        color: theme.brightness == Brightness.dark ? theme.cardColor : AppColors.primaryLight,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.primary.withAlpha(51)),
       ),
@@ -234,12 +275,12 @@ class HomeScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Quét rác ngay',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                    color: theme.textTheme.titleMedium?.color,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -247,13 +288,13 @@ class HomeScreen extends StatelessWidget {
                   'Sử dụng camera để nhận diện và phân loại rác thải.',
                   style: TextStyle(
                     fontSize: 13,
-                    color: AppColors.textSecondary,
+                    color: theme.textTheme.bodyMedium?.color,
                   ),
                 ),
                 const SizedBox(height: 12),
                 EcoButton(
                   label: 'Quét ngay',
-                  onPressed: () {},
+                  onPressed: onScanRequested ?? () {},
                   icon: LucideIcons.scan,
                   isFullWidth: false,
                 ),
@@ -271,20 +312,20 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title, String action) {
+  Widget _buildSectionHeader(String title, String action, VoidCallback? onPressed, ThemeData theme) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            color: theme.textTheme.titleMedium?.color,
           ),
         ),
         TextButton(
-          onPressed: () {},
+          onPressed: onPressed,
           child: Text(
             action,
             style: const TextStyle(color: AppColors.primary, fontSize: 13),
@@ -295,26 +336,19 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildCategoryGrid() {
-    final categories = [
-      {'icon': LucideIcons.glassWater, 'label': 'Nhựa', 'color': AppColors.blue},
-      {'icon': LucideIcons.fileText, 'label': 'Giấy', 'color': AppColors.orange},
-      {'icon': LucideIcons.hammer, 'label': 'Kim loại', 'color': Colors.blueGrey},
-      {'icon': LucideIcons.leaf, 'label': 'Hữu cơ', 'color': AppColors.primary},
-      {'icon': LucideIcons.zap, 'label': 'Pin & Điện tử', 'color': AppColors.red},
-    ];
-
     return SizedBox(
       height: 100,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
+        itemCount: MockData.categories.length,
         separatorBuilder: (context, index) => const SizedBox(width: 16),
         itemBuilder: (context, index) {
-          final cat = categories[index];
+          final cat = MockData.categories[index];
           return WasteCategoryCard(
-            icon: cat['icon'] as IconData,
-            label: cat['label'] as String,
-            color: cat['color'] as Color,
+            icon: cat.icon,
+            label: cat.name,
+            color: cat.color,
+            onTap: () => onCategoryRequested?.call(cat.name),
           );
         },
       ),
@@ -329,6 +363,7 @@ class HomeScreen extends StatelessWidget {
       points: isLoggedIn ? '+15 điểm' : 'Đăng nhập để tích điểm',
       icon: LucideIcons.glassWater,
       color: AppColors.blue,
+      onTap: onHistoryRequested,
     );
   }
 }

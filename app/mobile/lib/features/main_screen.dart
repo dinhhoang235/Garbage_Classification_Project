@@ -10,6 +10,8 @@ import 'auth/login_screen.dart';
 import '../models/user_model.dart';
 import '../core/mock/mock_data.dart';
 
+import 'home/category_list_screen.dart';
+
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
@@ -48,9 +50,47 @@ class _MainScreenState extends State<MainScreen> {
         HomeScreen(
           currentUser: _currentUser,
           onLoginRequested: _requestLogin,
+          onScanRequested: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ScanScreen(),
+                fullscreenDialog: true,
+              ),
+            );
+          },
+          onHistoryRequested: () {
+            setState(() {
+              _selectedIndex = 1; // Switch to History tab
+            });
+          },
+          onCategoryRequested: (category) {
+            if (category == 'all') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CategoryListScreen()),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Xem danh mục: $category'),
+                  behavior: SnackBarBehavior.floating,
+                  backgroundColor: AppColors.primary,
+                ),
+              );
+            }
+          },
+          onNotificationRequested: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Bạn không có thông báo mới'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          },
         ),
         const HistoryScreen(),
-        const ScanScreen(),
+        const SizedBox.shrink(), // Placeholder for Scan tab
         const MapScreen(),
         ProfileScreen(
           currentUser: _currentUser,
@@ -79,14 +119,24 @@ class _MainScreenState extends State<MainScreen> {
         child: BottomNavigationBar(
           currentIndex: _selectedIndex,
           onTap: (index) {
-            setState(() {
-              _selectedIndex = index;
-            });
+            if (index == 2) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ScanScreen(),
+                  fullscreenDialog: true,
+                ),
+              );
+            } else {
+              setState(() {
+                _selectedIndex = index;
+              });
+            }
           },
           type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).cardColor,
           selectedItemColor: AppColors.primary,
-          unselectedItemColor: AppColors.textTertiary,
+          unselectedItemColor: Theme.of(context).disabledColor,
           showSelectedLabels: true,
           showUnselectedLabels: true,
           selectedLabelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),

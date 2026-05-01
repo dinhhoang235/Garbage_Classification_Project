@@ -62,9 +62,9 @@ class ResultScreen extends StatelessWidget {
               child: const Icon(LucideIcons.trash2, color: AppColors.blue, size: 80),
             ),
             const SizedBox(height: 40),
-            _buildInfoTile(LucideIcons.clock, 'Thời gian phân hủy', '450 năm'),
-            _buildInfoTile(LucideIcons.info, 'Cách xử lý', 'Rửa sạch, bóp nhẹ và bỏ vào thùng tái chế'),
-            _buildInfoTile(LucideIcons.lightbulb, 'Gợi ý', 'Bạn có thể tái sử dụng chai nhựa để đựng nước, trồng cây, v.v.'),
+            _buildInfoTile(LucideIcons.clock, 'Thời gian phân hủy', '450 năm', context),
+            _buildInfoTile(LucideIcons.info, 'Cách xử lý', 'Rửa sạch, bóp nhẹ và bỏ vào thùng tái chế', context),
+            _buildInfoTile(LucideIcons.lightbulb, 'Gợi ý', 'Bạn có thể tái sử dụng chai nhựa để đựng nước, trồng cây, v.v.', context),
             const SizedBox(height: 40),
             Row(
               children: [
@@ -78,8 +78,11 @@ class ResultScreen extends StatelessWidget {
                 const SizedBox(width: 16),
                 Expanded(
                   child: EcoButton(
-                    label: 'Lưu kết quả',
-                    onPressed: () => Navigator.pop(context),
+                    label: 'Xong',
+                    onPressed: () {
+                      Navigator.pop(context); // Pop ResultScreen
+                      Navigator.pop(context); // Pop ScanScreen to go back to Home
+                    },
                     isPrimary: true,
                   ),
                 ),
@@ -91,7 +94,8 @@ class ResultScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoTile(IconData icon, String title, String value) {
+  Widget _buildInfoTile(IconData icon, String title, String value, BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: Row(
@@ -100,7 +104,7 @@ class ResultScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppColors.primaryLight,
+              color: theme.brightness == Brightness.dark ? Colors.white.withAlpha(26) : AppColors.primaryLight,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: AppColors.primary, size: 20),

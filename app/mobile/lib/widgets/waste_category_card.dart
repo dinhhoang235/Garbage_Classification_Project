@@ -32,7 +32,11 @@ class WasteCategoryCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: Theme.of(context).textTheme.labelLarge?.color,
+            ),
           ),
         ],
       ),
