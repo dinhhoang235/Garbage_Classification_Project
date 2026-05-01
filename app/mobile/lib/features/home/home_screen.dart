@@ -14,6 +14,7 @@ class HomeScreen extends StatelessWidget {
   final VoidCallback? onHistoryRequested;
   final Function(String)? onCategoryRequested;
   final VoidCallback? onNotificationRequested;
+  final VoidCallback? onAchievementsRequested;
 
   const HomeScreen({
     super.key,
@@ -23,6 +24,7 @@ class HomeScreen extends StatelessWidget {
     this.onHistoryRequested,
     this.onCategoryRequested,
     this.onNotificationRequested,
+    this.onAchievementsRequested,
   });
 
   bool get isLoggedIn => currentUser != null;
@@ -40,7 +42,10 @@ class HomeScreen extends StatelessWidget {
               _buildHeader(theme),
               const SizedBox(height: 24),
               if (isLoggedIn) ...[
-                _buildScoreCard(),
+                GestureDetector(
+                  onTap: onAchievementsRequested,
+                  child: _buildScoreCard(),
+                ),
                 const SizedBox(height: 24),
               ] else ...[
                 _buildGuestPrompt(),
@@ -316,12 +321,15 @@ class HomeScreen extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: theme.textTheme.titleMedium?.color,
+        Expanded(
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: theme.textTheme.titleMedium?.color,
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
         TextButton(

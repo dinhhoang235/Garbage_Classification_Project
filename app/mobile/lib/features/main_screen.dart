@@ -11,6 +11,8 @@ import '../models/user_model.dart';
 import '../core/mock/mock_data.dart';
 
 import 'home/category_list_screen.dart';
+import 'profile/achievements_screen.dart';
+import '../widgets/notifications_bottom_sheet.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -81,10 +83,18 @@ class _MainScreenState extends State<MainScreen> {
             }
           },
           onNotificationRequested: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Bạn không có thông báo mới'),
-                behavior: SnackBarBehavior.floating,
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (context) => const NotificationsBottomSheet(),
+            );
+          },
+          onAchievementsRequested: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AchievementsScreen(user: _currentUser),
               ),
             );
           },

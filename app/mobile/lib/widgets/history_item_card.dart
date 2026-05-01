@@ -56,9 +56,12 @@ class HistoryItemCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Text(
-                        time,
-                        style: TextStyle(color: theme.textTheme.labelLarge?.color, fontSize: 12),
+                      Flexible(
+                        child: Text(
+                          time,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: theme.textTheme.labelLarge?.color, fontSize: 12),
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Container(
@@ -77,9 +80,14 @@ class HistoryItemCard extends StatelessWidget {
                 ],
               ),
             ),
-            Text(
-              points,
-              style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 14),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                points,
+                textAlign: TextAlign.end,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 14),
+              ),
             ),
           ],
         ),

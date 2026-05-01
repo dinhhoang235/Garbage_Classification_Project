@@ -63,7 +63,7 @@ class ProfileScreen extends StatelessWidget {
                       } else {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const AchievementsScreen()),
+                          MaterialPageRoute(builder: (context) => AchievementsScreen(user: currentUser)),
                         );
                       }
                     },
@@ -172,61 +172,70 @@ class ProfileScreen extends StatelessWidget {
 
   Widget _buildLevelCard(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: theme.dividerColor),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(13),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.blue.withAlpha(26),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(LucideIcons.award, color: AppColors.blue),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Level ${currentUser!.level} - ${currentUser!.levelName}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                    Text(
-                      '${currentUser!.points.toString().replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]}.")} / 3.000 XP',
-                      style: TextStyle(color: theme.textTheme.bodyMedium?.color, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: LinearProgressIndicator(
-              value: currentUser!.xpProgress,
-              backgroundColor: theme.brightness == Brightness.dark ? Colors.white.withAlpha(26) : AppColors.primaryLight,
-              color: AppColors.primary,
-              minHeight: 8,
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => AchievementsScreen(user: currentUser)),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: theme.dividerColor),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(13),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
             ),
-          ),
-        ],
+          ],
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.blue.withAlpha(26),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(LucideIcons.award, color: AppColors.blue),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Level ${currentUser!.level} - ${currentUser!.levelName}',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      Text(
+                        '${currentUser!.points.toString().replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]}.")} / 3.000 XP',
+                        style: TextStyle(color: theme.textTheme.bodyMedium?.color, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(LucideIcons.chevronRight, size: 16, color: theme.disabledColor),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: LinearProgressIndicator(
+                value: currentUser!.xpProgress,
+                backgroundColor: theme.brightness == Brightness.dark ? Colors.white.withAlpha(26) : AppColors.primaryLight,
+                color: AppColors.primary,
+                minHeight: 8,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
