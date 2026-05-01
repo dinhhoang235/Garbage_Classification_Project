@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/services/category_service.dart';
 import '../../models/waste_category_model.dart';
+import '../../widgets/skeleton.dart';
 
 class CategoryListScreen extends StatefulWidget {
   const CategoryListScreen({super.key});
@@ -47,10 +48,10 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
         ),
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-              ),
+          ? ListView.builder(
+              padding: const EdgeInsets.all(20),
+              itemCount: 5,
+              itemBuilder: (context, index) => const CategoryItemSkeleton(),
             )
           : _categories.isEmpty
               ? Center(

@@ -4,12 +4,12 @@ import '../../widgets/eco_button.dart';
 import '../../widgets/waste_category_card.dart';
 import '../../widgets/history_item_card.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/services/api_client.dart';
-import '../../core/constants/api_constants.dart';
 import '../../models/user_model.dart';
 import '../../models/history_model.dart';
 import '../../models/waste_category_model.dart';
 import '../../core/services/category_service.dart';
+import '../../core/services/history_service.dart';
+import '../../widgets/skeleton.dart';
 
 class HomeScreen extends StatefulWidget {
   final User? currentUser;
@@ -39,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<WasteCategory> _categories = [];
   HistoryItem? _latestHistoryItem;
   bool _isLoadingCategories = true;
+  bool _isLoadingHistory = true;
 
 
 
@@ -69,22 +70,34 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadLatestHistory() async {
-    if (widget.currentUser == null) return;
+    if (!isLoggedIn) {
+      if (mounted) setState(() => _isLoadingHistory = false);
+      return;
+    }
+    
+    if (mounted) setState(() => _isLoadingHistory = true);
+    
     try {
-      final apiClient = ApiClient();
-      final response = await apiClient.dio.get(
-        ApiConstants.history,
-        queryParameters: {'limit': 1},
-      );
-      if (response.statusCode == 200 && mounted) {
-        final list = response.data as List;
-        if (list.isNotEmpty) {
-          setState(() {
-            _latestHistoryItem = HistoryItem.fromJson(list.first as Map<String, dynamic>);
-          });
-        }
+      // Add a timeout to prevent infinite loading if network is unstable
+      final historyItems = await HistoryService()
+          .getHistory(limit: 1)
+          .timeout(const Duration(seconds: 5));
+          
+      if (mounted) {
+        setState(() {
+          _latestHistoryItem = historyItems.isNotEmpty ? historyItems.first : null;
+          _isLoadingHistory = false;
+        });
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('HomeScreen._loadLatestHistory error: $e');
+      if (mounted) {
+        setState(() {
+          _latestHistoryItem = null;
+          _isLoadingHistory = false;
+        });
+      }
+    }
   }
 
   @override
@@ -403,11 +416,10 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_isLoadingCategories) {
       return SizedBox(
         height: 100,
-        child: Center(
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-          ),
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          itemCount: 4,
+          itemBuilder: (context, index) => const CategoryCardSkeleton(),
         ),
       );
     }
@@ -444,6 +456,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildRecentActivity() {
+    final theme = Theme.of(context);
+    if (_isLoadingHistory) {
+      return const HistoryItemSkeleton();
+    }
+
     if (_latestHistoryItem != null) {
       return HistoryItemCard(
         title: _latestHistoryItem!.displayName,
@@ -458,20 +475,45 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (isLoggedIn) {
       return Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Theme.of(context).dividerColor),
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: theme.dividerColor.withAlpha(80)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(5),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        child: Row(
+        child: Column(
           children: [
-            Icon(LucideIcons.history, color: Theme.of(context).disabledColor),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Chưa có hoạt động nào. Bắt đầu quét rác!',
-                style: TextStyle(color: Theme.of(context).disabledColor),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: theme.disabledColor.withAlpha(20),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(LucideIcons.history, color: theme.disabledColor, size: 32),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Chưa có hoạt động nào',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: theme.textTheme.titleMedium?.color,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Bắt đầu quét rác để theo dõi quá trình bảo vệ môi trường của bạn.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: theme.disabledColor,
+                fontSize: 13,
               ),
             ),
           ],

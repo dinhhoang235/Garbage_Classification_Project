@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../core/theme/app_colors.dart';
+import '../../widgets/skeleton.dart';
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -12,6 +13,20 @@ class StatsScreen extends StatefulWidget {
 
 class _StatsScreenState extends State<StatsScreen> {
   String _selectedPeriod = 'Tháng này';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _simulateLoading();
+  }
+
+  Future<void> _simulateLoading() async {
+    await Future.delayed(const Duration(milliseconds: 1500));
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,19 +62,32 @@ class _StatsScreenState extends State<StatsScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildTotalCard(),
-            const SizedBox(height: 24),
-            _buildChartSection(theme),
-            const SizedBox(height: 24),
-            _buildComparisonCard(theme),
-          ],
-        ),
-      ),
+      body: _isLoading
+          ? SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  const ScoreCardSkeleton(),
+                  const SizedBox(height: 24),
+                  const ChartSkeleton(),
+                  const SizedBox(height: 24),
+                  const ChartSkeleton(),
+                ],
+              ),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildTotalCard(),
+                  const SizedBox(height: 24),
+                  _buildChartSection(theme),
+                  const SizedBox(height: 24),
+                  _buildComparisonCard(theme),
+                ],
+              ),
+            ),
     );
   }
 

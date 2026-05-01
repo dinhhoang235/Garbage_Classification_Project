@@ -11,19 +11,43 @@ import 'settings_screen.dart';
 import 'notifications_screen.dart';
 import 'about_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   final User? currentUser;
   final VoidCallback onLogin;
   final VoidCallback onLogout;
+  /// Called when user data changes (e.g. avatar updated) so parent can persist
+  final void Function(User updatedUser)? onUserUpdated;
 
   const ProfileScreen({
     super.key,
     required this.currentUser,
     required this.onLogin,
     required this.onLogout,
+    this.onUserUpdated,
   });
 
-  bool get isLoggedIn => currentUser != null;
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  late User? _currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentUser = widget.currentUser;
+  }
+
+  @override
+  void didUpdateWidget(covariant ProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentUser != widget.currentUser) {
+      _currentUser = widget.currentUser;
+    }
+  }
+
+  bool get isLoggedIn => _currentUser != null;
 
   @override
   Widget build(BuildContext context) {
@@ -43,28 +67,33 @@ class ProfileScreen extends StatelessWidget {
                   ProfileMenuItem(
                     icon: LucideIcons.user,
                     title: 'Hồ sơ của tôi',
-                    onTap: () {
+                    onTap: () async {
                       if (!isLoggedIn) {
                         _navigateToLogin(context);
                       } else {
-                        Navigator.push(
+                        final result = await Navigator.push<User>(
                           context,
-                          MaterialPageRoute(builder: (context) => MyProfileScreen(user: currentUser!)),
+                          MaterialPageRoute(builder: (context) => MyProfileScreen(user: _currentUser!)),
                         );
+                        // Nếu MyProfileScreen trả về User mới (sau khi upload avatar)
+                        if (result != null) {
+                          setState(() => _currentUser = result);
+                          widget.onUserUpdated?.call(result);
+                        }
                       }
                     },
                   ),
                   ProfileMenuItem(
                     icon: LucideIcons.trophy,
                     title: 'Thành tích',
-                    trailing: isLoggedIn ? currentUser!.achievementsCount.toString() : null,
+                    trailing: isLoggedIn ? _currentUser!.achievementsCount.toString() : null,
                     onTap: () {
                       if (!isLoggedIn) {
                         _navigateToLogin(context);
                       } else {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => AchievementsScreen(user: currentUser)),
+                          MaterialPageRoute(builder: (context) => AchievementsScreen(user: _currentUser)),
                         );
                       }
                     },
@@ -120,7 +149,7 @@ class ProfileScreen extends StatelessWidget {
 
   Future<void> _handleLogout() async {
     await AuthService().logout();
-    onLogout();
+    widget.onLogout();
   }
 
   Widget _buildHeader() {
@@ -139,12 +168,12 @@ class ProfileScreen extends StatelessWidget {
           CircleAvatar(
             radius: 40,
             backgroundColor: Colors.white.withAlpha(51),
-            backgroundImage: isLoggedIn && currentUser!.avatarUrl.isNotEmpty
-                ? NetworkImage(currentUser!.avatarUrl)
+            backgroundImage: isLoggedIn && _currentUser!.avatarUrl.isNotEmpty
+                ? NetworkImage(_currentUser!.avatarUrl)
                 : null,
-            child: isLoggedIn && currentUser!.avatarUrl.isEmpty
+            child: isLoggedIn && _currentUser!.avatarUrl.isEmpty
                 ? Text(
-                    currentUser!.initials,
+                    _currentUser!.initials,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -161,7 +190,7 @@ class ProfileScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isLoggedIn ? currentUser!.name : 'Khách',
+                  isLoggedIn ? _currentUser!.name : 'Khách',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 24,
@@ -169,7 +198,7 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  isLoggedIn ? currentUser!.phoneNumber : 'Đăng nhập để lưu lại quá trình',
+                  isLoggedIn ? _currentUser!.phoneNumber : 'Đăng nhập để lưu lại quá trình',
                   style: TextStyle(
                     color: Colors.white.withAlpha(204),
                     fontSize: 14,
@@ -189,7 +218,7 @@ class ProfileScreen extends StatelessWidget {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => AchievementsScreen(user: currentUser)),
+          MaterialPageRoute(builder: (context) => AchievementsScreen(user: _currentUser)),
         );
       },
       child: Container(
@@ -224,11 +253,11 @@ class ProfileScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Level ${currentUser!.level} - ${currentUser!.levelName}',
+                        'Level ${_currentUser!.level} - ${_currentUser!.levelName}',
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                       Text(
-                        '${currentUser!.points.toString().replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]}.")} / 3.000 XP',
+                        '${_currentUser!.points.toString().replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]}.")} / 3.000 XP',
                         style: TextStyle(color: theme.textTheme.bodyMedium?.color, fontSize: 12),
                       ),
                     ],
@@ -241,7 +270,7 @@ class ProfileScreen extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: LinearProgressIndicator(
-                value: currentUser!.xpProgress,
+                value: _currentUser!.xpProgress,
                 backgroundColor: theme.brightness == Brightness.dark ? Colors.white.withAlpha(26) : AppColors.primaryLight,
                 color: AppColors.primary,
                 minHeight: 8,

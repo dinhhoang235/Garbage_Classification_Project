@@ -2,8 +2,30 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../core/theme/app_colors.dart';
 
-class NotificationsScreen extends StatelessWidget {
+import '../../widgets/skeleton.dart';
+
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _simulateLoading();
+  }
+
+  Future<void> _simulateLoading() async {
+    await Future.delayed(const Duration(milliseconds: 1200));
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,14 +39,21 @@ class NotificationsScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(20),
-        itemCount: 5,
-        separatorBuilder: (context, index) => Divider(height: 32, color: theme.dividerColor),
-        itemBuilder: (context, index) {
-          return _buildNotificationItem(index, theme);
-        },
-      ),
+      body: _isLoading
+          ? ListView.separated(
+              padding: const EdgeInsets.all(20),
+              itemCount: 6,
+              separatorBuilder: (context, index) => Divider(height: 32, color: theme.dividerColor),
+              itemBuilder: (context, index) => const NotificationItemSkeleton(),
+            )
+          : ListView.separated(
+              padding: const EdgeInsets.all(20),
+              itemCount: 5,
+              separatorBuilder: (context, index) => Divider(height: 32, color: theme.dividerColor),
+              itemBuilder: (context, index) {
+                return _buildNotificationItem(index, theme);
+              },
+            ),
     );
   }
 
@@ -61,12 +90,12 @@ class NotificationsScreen extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 'Đây là nội dung chi tiết của thông báo để bạn theo dõi hoạt động của mình...',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                style: TextStyle(color: theme.textTheme.bodyMedium?.color, fontSize: 13),
               ),
               const SizedBox(height: 8),
               Text(
                 times[index],
-                style: const TextStyle(color: AppColors.textTertiary, fontSize: 12),
+                style: TextStyle(color: theme.disabledColor, fontSize: 12),
               ),
             ],
           ),

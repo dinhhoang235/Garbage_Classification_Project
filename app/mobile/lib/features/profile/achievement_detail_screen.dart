@@ -1,34 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../core/theme/app_colors.dart';
+import '../../models/achievement_model.dart';
 
 class AchievementDetailScreen extends StatelessWidget {
-  final String title;
-  final bool isUnlocked;
-  final int index;
+  final Achievement achievement;
 
   const AchievementDetailScreen({
     super.key,
-    required this.title,
-    required this.isUnlocked,
-    required this.index,
+    required this.achievement,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final details = [
-      {'req': 'Hoàn thành lượt quét rác đầu tiên của bạn.', 'icon': LucideIcons.flag, 'reward': '50 XP'},
-      {'req': 'Phân loại thành công 50 vật dụng từ chất liệu Nhựa.', 'icon': LucideIcons.glassWater, 'reward': '200 XP'},
-      {'req': 'Phân loại thành công 50 vật dụng từ chất liệu Giấy.', 'icon': LucideIcons.fileText, 'reward': '200 XP'},
-      {'req': 'Đạt tỉ lệ nhận diện chính xác 100% trong 20 lần quét liên tiếp.', 'icon': LucideIcons.checkCircle, 'reward': '500 XP'},
-      {'req': 'Xử lý đúng cách 20 vật dụng hữu cơ.', 'icon': LucideIcons.leaf, 'reward': '150 XP'},
-      {'req': 'Phân loại đúng 10 thiết bị điện tử hoặc pin cũ.', 'icon': LucideIcons.zap, 'reward': '300 XP'},
-      {'req': 'Phân loại thành công 50 vật dụng hữu cơ.', 'icon': LucideIcons.apple, 'reward': '250 XP'},
-      {'req': 'Đạt cấp độ 5 (Eco Hero) và chia sẻ ứng dụng cho 3 người bạn.', 'icon': LucideIcons.users, 'reward': '1000 XP'},
-    ];
-
-    final currentDetail = details[index % details.length];
+    final isUnlocked = achievement.isUnlocked;
 
     return Scaffold(
       appBar: AppBar(
@@ -56,7 +42,7 @@ class AchievementDetailScreen extends StatelessWidget {
                   ),
                 ),
                 child: Icon(
-                  LucideIcons.award,
+                  _getIconForAchievement(achievement.id),
                   size: 64,
                   color: isUnlocked ? AppColors.primary : theme.disabledColor,
                 ),
@@ -64,7 +50,7 @@ class AchievementDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              title,
+              achievement.title,
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -82,18 +68,44 @@ class AchievementDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (!isUnlocked && achievement.targetCount > 0) ...[
+                    Text(
+                      'Tiến độ',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: theme.disabledColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: achievement.progress,
+                        minHeight: 12,
+                        backgroundColor: theme.dividerColor,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${achievement.currentCount} / ${achievement.targetCount}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 32),
+                  ],
                   _buildDetailSection(
                     context,
                     'Yêu cầu thành tích',
-                    currentDetail['req'] as String,
-                    currentDetail['icon'] as IconData,
+                    achievement.description,
+                    LucideIcons.target,
                     theme,
                   ),
                   const SizedBox(height: 24),
                   _buildDetailSection(
                     context,
                     'Phần thưởng',
-                    currentDetail['reward'] as String,
+                    'Thẻ danh hiệu độc quyền',
                     LucideIcons.gift,
                     theme,
                     isReward: true,
@@ -146,5 +158,19 @@ class AchievementDetailScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  IconData _getIconForAchievement(String id) {
+    switch (id) {
+      case 'beginner': return LucideIcons.award;
+      case 'plastic_hero': return LucideIcons.recycle;
+      case 'paper_warrior': return LucideIcons.fileText;
+      case 'sorting_master': return LucideIcons.layers;
+      case 'forest_protector': return LucideIcons.treePine;
+      case 'energy_saver': return LucideIcons.zap;
+      case 'organic_expert': return LucideIcons.leaf;
+      case 'inspiration': return LucideIcons.star;
+      default: return LucideIcons.award;
+    }
   }
 }

@@ -97,6 +97,9 @@ class _MainScreenState extends State<MainScreen> {
         currentUser: _currentUser,
         onLogin: _requestLogin,
         onLogout: _onLogout,
+        onUserUpdated: (updatedUser) {
+          AppState().setUser(updatedUser);
+        },
       ),
     ];
   }

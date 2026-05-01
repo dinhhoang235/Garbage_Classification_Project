@@ -2,27 +2,72 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/user_model.dart';
+import '../../models/achievement_model.dart';
+import '../../core/services/user_service.dart';
 import 'rank_detail_screen.dart';
 import 'achievement_detail_screen.dart';
+import '../../widgets/skeleton.dart';
 
-class AchievementsScreen extends StatelessWidget {
+class AchievementsScreen extends StatefulWidget {
   final User? user;
 
   const AchievementsScreen({super.key, this.user});
 
   @override
+  State<AchievementsScreen> createState() => _AchievementsScreenState();
+}
+
+class _AchievementsScreenState extends State<AchievementsScreen> with SingleTickerProviderStateMixin {
+  final UserService _userService = UserService();
+  List<Achievement> _achievements = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+  late AnimationController _animationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _loadAchievements();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadAchievements() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    
+    try {
+      final achievements = await _userService.getAchievements();
+      if (mounted) {
+        setState(() {
+          _achievements = achievements;
+          _isLoading = false;
+        });
+        _animationController.forward(from: 0);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Không thể tải dữ liệu thành tích. Vui lòng kiểm tra kết nối.';
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final titles = [
-      'Người mới bắt đầu',
-      'Siêu anh hùng nhựa',
-      'Chiến binh giấy',
-      'Bậc thầy phân loại',
-      'Người bảo vệ rừng',
-      'Tiết kiệm năng lượng',
-      'Chuyên gia hữu cơ',
-      'Người truyền cảm hứng'
-    ];
 
     return Scaffold(
       appBar: AppBar(
@@ -33,41 +78,121 @@ class AchievementsScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: CustomScrollView(
-        slivers: [
-          if (user != null)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-                child: _buildLevelCard(context),
+      body: RefreshIndicator(
+        onRefresh: _loadAchievements,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            if (widget.user != null)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+                  child: _buildLevelCard(context),
+                ),
+              ),
+            if (_isLoading)
+              _buildSkeletonGrid(theme)
+            else if (_errorMessage != null)
+              SliverFillRemaining(
+                child: _buildErrorState(theme),
+              )
+            else if (_achievements.isEmpty)
+              const SliverFillRemaining(
+                child: Center(child: Text('Chưa có thành tích nào')),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 0.85,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final achievement = _achievements[index];
+                      return AnimatedBuilder(
+                        animation: _animationController,
+                        builder: (context, child) {
+                          final delay = index * 0.1;
+                          final animationValue = Curves.easeOut.transform(
+                            (_animationController.value - delay).clamp(0.0, 1.0),
+                          );
+                          return Opacity(
+                            opacity: animationValue,
+                            child: Transform.translate(
+                              offset: Offset(0, 20 * (1 - animationValue)),
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: _buildAchievementCard(context, index, achievement, theme),
+                      );
+                    },
+                    childCount: _achievements.length,
+                  ),
+                ),
+              ),
+            const SliverToBoxAdapter(child: SizedBox(height: 30)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSkeletonGrid(ThemeData theme) {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      sliver: SliverGrid(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          childAspectRatio: 0.85,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => const AchievementCardSkeleton(),
+          childCount: 6,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(ThemeData theme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(LucideIcons.alertTriangle, size: 64, color: theme.disabledColor),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage!,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: theme.disabledColor),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _loadAchievements,
+              icon: const Icon(LucideIcons.refreshCw, size: 18),
+              label: const Text('Thử lại'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 0.85,
-              ),
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final isUnlocked = index < 3;
-                  return _buildAchievementCard(context, index, isUnlocked, theme, titles);
-                },
-                childCount: titles.length,
-              ),
-            ),
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 30)),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildLevelCard(BuildContext context) {
-    final currentUser = user;
+    final currentUser = widget.user;
     if (currentUser == null) return const SizedBox.shrink();
 
     return GestureDetector(
@@ -153,16 +278,15 @@ class AchievementsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAchievementCard(BuildContext context, int index, bool isUnlocked, ThemeData theme, List<String> titles) {
+  Widget _buildAchievementCard(BuildContext context, int index, Achievement achievement, ThemeData theme) {
+    final isUnlocked = achievement.isUnlocked;
     return InkWell(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => AchievementDetailScreen(
-              title: titles[index],
-              isUnlocked: isUnlocked,
-              index: index,
+              achievement: achievement,
             ),
           ),
         );
@@ -186,13 +310,13 @@ class AchievementsScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              LucideIcons.award,
+              _getIconForAchievement(achievement.id),
               size: 48,
               color: isUnlocked ? AppColors.primary : theme.disabledColor,
             ),
             const SizedBox(height: 12),
             Text(
-              titles[index],
+              achievement.title,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
@@ -208,9 +332,40 @@ class AchievementsScreen extends StatelessWidget {
                 color: isUnlocked ? AppColors.primary : theme.disabledColor,
               ),
             ),
+            if (!isUnlocked && achievement.targetCount > 0) ...[
+               const SizedBox(height: 8),
+               ClipRRect(
+                 borderRadius: BorderRadius.circular(4),
+                 child: LinearProgressIndicator(
+                   value: achievement.progress,
+                   backgroundColor: theme.dividerColor,
+                   color: AppColors.primary.withAlpha(128),
+                   minHeight: 4,
+                 ),
+               ),
+               const SizedBox(height: 4),
+               Text(
+                 '${achievement.currentCount}/${achievement.targetCount}',
+                 style: TextStyle(fontSize: 10, color: theme.disabledColor),
+               ),
+            ]
           ],
         ),
       ),
     );
+  }
+
+  IconData _getIconForAchievement(String id) {
+    switch (id) {
+      case 'beginner': return LucideIcons.award;
+      case 'plastic_hero': return LucideIcons.recycle;
+      case 'paper_warrior': return LucideIcons.fileText;
+      case 'sorting_master': return LucideIcons.layers;
+      case 'forest_protector': return LucideIcons.treePine;
+      case 'energy_saver': return LucideIcons.zap;
+      case 'organic_expert': return LucideIcons.leaf;
+      case 'inspiration': return LucideIcons.star;
+      default: return LucideIcons.award;
+    }
   }
 }

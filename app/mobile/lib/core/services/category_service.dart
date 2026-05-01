@@ -9,7 +9,7 @@ class CategoryService {
 
   Future<List<WasteCategory>> getCategories() async {
     try {
-      final response = await _apiClient.dio.get(ApiConstants.categories);
+      final response = await _apiClient.dio.get(ApiConstants.categories).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         return (response.data as List).map((json) {
           final id = json['id']?.toString() ?? '';

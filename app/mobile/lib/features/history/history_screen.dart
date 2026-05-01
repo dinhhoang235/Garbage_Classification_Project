@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/services/history_service.dart';
 import '../../core/state/app_state.dart';
 import '../../models/history_model.dart';
+import '../../widgets/skeleton.dart';
 import 'history_detail_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -46,7 +47,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     });
 
     try {
-      final items = await _historyService.getHistory();
+      final items = await _historyService.getHistory().timeout(const Duration(seconds: 10));
       if (mounted) {
         setState(() {
           _allHistoryItems = items;
@@ -116,10 +117,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Widget _buildBody(ThemeData theme) {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-        ),
+      return ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        itemCount: 6,
+        itemBuilder: (context, index) => const HistoryItemSkeleton(),
       );
     }
 
