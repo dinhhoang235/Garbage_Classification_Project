@@ -99,7 +99,13 @@ class _MainScreenState extends State<MainScreen> {
             );
           },
         ),
-        const HistoryScreen(),
+        HistoryScreen(
+          onTabRequested: (index) {
+            setState(() {
+              _selectedIndex = index;
+            });
+          },
+        ),
         const SizedBox.shrink(), // Placeholder for Scan tab
         const MapScreen(),
         ProfileScreen(

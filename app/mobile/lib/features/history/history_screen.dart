@@ -3,9 +3,11 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../stats/stats_screen.dart';
 import '../../widgets/history_item_card.dart';
 import '../../core/theme/app_colors.dart';
+import 'history_detail_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key});
+  final Function(int)? onTabRequested;
+  const HistoryScreen({super.key, this.onTabRequested});
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
@@ -25,6 +27,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       'color': AppColors.blue,
       'date': 'Hôm nay',
       'timestamp': DateTime(2026, 5, 1, 8, 30),
+      'location': 'Công viên Tao Đàn, Quận 1',
     },
     {
       'title': 'Vỏ chuối',
@@ -35,6 +38,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       'color': AppColors.primary,
       'date': 'Hôm nay',
       'timestamp': DateTime(2026, 5, 1, 7, 45),
+      'location': 'Chung cư Vinhomes, Bình Thạnh',
     },
     {
       'title': 'Lon nhôm',
@@ -45,6 +49,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       'color': Colors.blueGrey,
       'date': 'Hôm nay',
       'timestamp': DateTime(2026, 5, 1, 7, 20),
+      'location': 'Đại học Bách Khoa, Quận 10',
     },
     {
       'title': 'Pin tiểu',
@@ -53,8 +58,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
       'points': '+20 điểm',
       'icon': LucideIcons.zap,
       'color': AppColors.red,
-      'date': 'Hôm qua',
+      'date': 'Hôm nay',
       'timestamp': DateTime(2026, 4, 30, 18, 30),
+      'location': 'Trạm thu gom #12, Quận 1',
     },
     {
       'title': 'Hộp giấy',
@@ -65,6 +71,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       'color': AppColors.orange,
       'date': 'Hôm qua',
       'timestamp': DateTime(2026, 4, 30, 17, 10),
+      'location': 'Siêu thị Co.op Mart, Quận 3',
     },
   ];
 
@@ -131,14 +138,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     itemCount: filteredItems.length,
                     itemBuilder: (context, index) {
                       final item = filteredItems[index];
                       bool showDate = index == 0 || filteredItems[index - 1]['date'] != item['date'];
 
                       return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           if (showDate) _buildDateHeader(item['date'], theme),
                           HistoryItemCard(
@@ -148,6 +155,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             points: item['points'],
                             icon: item['icon'],
                             color: item['color'],
+                            onTap: () async {
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => HistoryDetailScreen(item: item),
+                                ),
+                              );
+                              
+                              if (result == 'go_to_map' && widget.onTabRequested != null) {
+                                widget.onTabRequested!(3); // Index 3 is Map tab
+                              }
+                            },
                           ),
                         ],
                       );
@@ -250,15 +269,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Widget _buildFilterTabs(ThemeData theme) {
     final tabs = ['Tất cả', 'Tái chế', 'Hữu cơ', 'Nguy hại'];
-    return SizedBox(
-      height: 50,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        scrollDirection: Axis.horizontal,
-        itemCount: tabs.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final label = tabs[index];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: tabs.map((label) {
           final isSelected = _selectedFilter == label;
           return ChoiceChip(
             label: Text(label),
@@ -283,7 +298,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
             showCheckmark: false,
           );
-        },
+        }).toList(),
       ),
     );
   }
