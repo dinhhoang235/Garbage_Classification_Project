@@ -78,8 +78,13 @@ class _ResultScreenState extends State<ResultScreen> {
       if (!mounted) return;
 
       if (saved != null) {
+        // Gán đầy đủ thông tin category để Map và History list hiển thị được ngay
+        final fullItem = saved.copyWith(
+          category: widget.result.category,
+        );
+        
         setState(() => _saved = true);
-        AppState().notifyHistoryUpdated(); // Cập nhật màn hình lịch sử ngay lập tức
+        AppState().addHistoryItem(fullItem); // Cập nhật kho dữ liệu chung với item đầy đủ
         
         // Tự động cập nhật thông tin người dùng (điểm số, cấp độ) mới nhất từ server
         final updatedUser = await UserService().getProfile();

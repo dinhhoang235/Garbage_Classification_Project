@@ -92,6 +92,9 @@ class _MainScreenState extends State<MainScreen> {
         onTabRequested: (int index, [dynamic data]) {
           setState(() {
             _selectedIndex = index;
+            if (index == 3) {
+              // No longer need to increment refreshKey
+            }
             if (data is Map<String, dynamic>) {
               _mapFocalPoint = data['position'];
               _mapLabel = data['label'];
@@ -170,15 +173,16 @@ class _MainScreenState extends State<MainScreen> {
         ),
         child: BottomNavigationBar(
           currentIndex: _selectedIndex,
-          onTap: (index) {
+          onTap: (index) async {
             if (index == 2) {
-              Navigator.push(
+              await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => const ScanScreen(),
                   fullscreenDialog: true,
                 ),
               );
+              // Map will auto-refresh via AppState listener
             } else {
               setState(() {
                 _selectedIndex = index;

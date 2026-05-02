@@ -168,7 +168,11 @@ class HistoryDetailScreen extends StatelessWidget {
                       },
                     ),
                   ),
-                  _buildDetailRow(LucideIcons.info, 'Trạng thái', 'Đã xác nhận bởi hệ thống AI'),
+                  _buildDetailRow(
+                    LucideIcons.checkCircle, 
+                    'Độ tin cậy', 
+                    'Nhận diện đúng ${((item['confidence'] as double? ?? 0.0) * 100).toStringAsFixed(1)}%'
+                  ),
                 ],
               ),
             ),

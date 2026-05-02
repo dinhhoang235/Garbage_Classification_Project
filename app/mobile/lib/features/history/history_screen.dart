@@ -33,12 +33,21 @@ class _HistoryScreenState extends State<HistoryScreen> {
   void initState() {
     super.initState();
     _loadHistory();
-    AppState().historyUpdateNotifier.addListener(_loadHistory);
+    AppState().historyNotifier.addListener(_onHistoryStateChanged);
+  }
+
+  void _onHistoryStateChanged() {
+    if (mounted) {
+      setState(() {
+        _allHistoryItems = AppState().history;
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   void dispose() {
-    AppState().historyUpdateNotifier.removeListener(_loadHistory);
+    AppState().historyNotifier.removeListener(_onHistoryStateChanged);
     super.dispose();
   }
 
@@ -51,21 +60,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    // Luôn ưu tiên dùng dữ liệu từ kho chung trước
+    if (AppState().history.isNotEmpty) {
+      setState(() {
+        _allHistoryItems = AppState().history;
+        _isLoading = false;
+      });
+      // Vẫn gọi API ngầm để làm mới dữ liệu nếu cần
+    }
 
     try {
-      final items = await _historyService.getHistory().timeout(const Duration(seconds: 10));
+      final items = await _historyService.getHistory(limit: 100).timeout(const Duration(seconds: 10));
       if (mounted) {
-        setState(() {
-          _allHistoryItems = items;
-          _isLoading = false;
-        });
+        AppState().setHistory(items); // Gộp vào kho chung
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && _allHistoryItems.isEmpty) {
         setState(() {
           _errorMessage = 'Không thể tải lịch sử. Vui lòng thử lại.';
           _isLoading = false;
@@ -77,7 +87,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
   List<HistoryItem> get _filteredItems {
     List<HistoryItem> items = _selectedFilter == 'Tất cả'
         ? List.from(_allHistoryItems)
-        : _allHistoryItems.where((item) => item.type == _selectedFilter).toList();
+        : _allHistoryItems.where((item) {
+            if (_selectedFilter == 'Khác') return item.type == 'Thường';
+            return item.type == _selectedFilter;
+          }).toList();
 
     items.sort((a, b) {
       return _selectedSort == 'Mới nhất'
@@ -335,7 +348,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildFilterTabs(ThemeData theme) {
-    final tabs = ['Tất cả', 'Tái chế', 'Hữu cơ', 'Nguy hại'];
+    final tabs = ['Tất cả', 'Tái chế', 'Hữu cơ', 'Nguy hại', 'Khác'];
     return Container(
       height: 50,
       margin: const EdgeInsets.symmetric(vertical: 8),

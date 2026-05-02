@@ -32,6 +32,36 @@ class HistoryItem {
     this.category,
   });
 
+  HistoryItem copyWith({
+    int? id,
+    int? userId,
+    String? categoryId,
+    String? title,
+    double? confidence,
+    String? imageUrl,
+    String? location,
+    double? latitude,
+    double? longitude,
+    int? pointsEarned,
+    DateTime? createdAt,
+    WasteCategory? category,
+  }) {
+    return HistoryItem(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      categoryId: categoryId ?? this.categoryId,
+      title: title ?? this.title,
+      confidence: confidence ?? this.confidence,
+      imageUrl: imageUrl ?? this.imageUrl,
+      location: location ?? this.location,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      pointsEarned: pointsEarned ?? this.pointsEarned,
+      createdAt: createdAt ?? this.createdAt,
+      category: category ?? this.category,
+    );
+  }
+
   factory HistoryItem.fromJson(Map<String, dynamic> json) {
     String? dateStr = json['created_at']?.toString();
     if (dateStr != null && !dateStr.endsWith('Z') && !dateStr.contains('+')) {

@@ -1,18 +1,27 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_map_cache/flutter_map_cache.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:dio_cache_interceptor_file_store/dio_cache_interceptor_file_store.dart';
+import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
+import '../../core/state/app_state.dart';
 
 import '../../core/theme/app_colors.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'dart:async';
 import '../../core/services/map_service.dart';
+import '../../core/services/history_service.dart';
+import '../../models/history_model.dart';
+import 'package:intl/intl.dart';
 
 class MapScreen extends StatefulWidget {
   final LatLng? initialCenter;
   final LatLng? initialMarker;
   final String? initialLabel;
   final int? mapRequestId;
+  final int? refreshKey;
 
   const MapScreen({
     super.key,
@@ -20,6 +29,7 @@ class MapScreen extends StatefulWidget {
     this.initialMarker,
     this.initialLabel,
     this.mapRequestId,
+    this.refreshKey,
   });
 
   @override
@@ -27,9 +37,10 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
+  final MapService _mapService = MapService();
+  final HistoryService _historyService = HistoryService();
   final MapController _mapController = MapController();
   final TextEditingController _searchController = TextEditingController();
-  final MapService _mapService = MapService();
   
   LatLng? _currentPosition;
   LatLng? _selectedPosition;
@@ -37,15 +48,34 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   bool _isLoading = true;
   List<dynamic> _searchResults = [];
   List<Map<String, dynamic>> _searchHistory = [];
+  List<HistoryItem> _allHistoryMarkers = [];
   bool _isSearching = false;
   bool _showHistory = false;
   final FocusNode _searchFocus = FocusNode();
   Timer? _debounce;
+  String? _cachePath;
 
-  // Animation controller for map movement
-  void _animatedMapMove(LatLng destLocation, double destZoom) {
+  // Hiệu ứng "Fly-to" chuyên nghiệp (Zoom out -> Move -> Zoom in)
+  void _flyTo(LatLng destLocation, double destZoom) async {
     if (!mounted) return;
     
+    final currentZoom = _mapController.camera.zoom;
+    final isFarAway = (_mapController.camera.center.latitude - destLocation.latitude).abs() > 0.01 || 
+                     (_mapController.camera.center.longitude - destLocation.longitude).abs() > 0.01;
+
+    if (isFarAway) {
+      // Step 1: Zoom out nhẹ nếu ở xa
+      final zoomOutTarget = (currentZoom - 1.5).clamp(5.0, 18.0);
+      await _animatedMapMoveAction(destLocation, zoomOutTarget, 600);
+      // Step 2: Zoom in lại vị trí đích
+      await _animatedMapMoveAction(destLocation, destZoom, 800);
+    } else {
+      _animatedMapMoveAction(destLocation, destZoom, 1000);
+    }
+  }
+
+  Future<void> _animatedMapMoveAction(LatLng destLocation, double destZoom, int durationMs) async {
+    final completer = Completer<void>();
     final latTween = Tween<double>(
         begin: _mapController.camera.center.latitude,
         end: destLocation.latitude);
@@ -56,7 +86,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         Tween<double>(begin: _mapController.camera.zoom, end: destZoom);
 
     final controller = AnimationController(
-        duration: const Duration(milliseconds: 1000), vsync: this);
+        duration: Duration(milliseconds: durationMs), vsync: this);
     
     final Animation<double> animation =
         CurvedAnimation(parent: controller, curve: Curves.fastOutSlowIn);
@@ -71,15 +101,24 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     animation.addStatusListener((status) {
       if (status == AnimationStatus.completed || status == AnimationStatus.dismissed) {
         controller.dispose();
+        completer.complete();
       }
     });
 
     controller.forward();
+    return completer.future;
+  }
+
+  void _animatedMapMove(LatLng destLocation, double destZoom) {
+    _flyTo(destLocation, destZoom);
   }
 
   @override
   void initState() {
     super.initState();
+    _initCache();
+    _loadAllHistoryMarkers();
+    AppState().historyNotifier.addListener(_onHistoryChanged);
     _loadSearchHistory();
     _searchFocus.addListener(() {
       setState(() {
@@ -150,27 +189,64 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   @override
   void didUpdateWidget(MapScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Nếu có vị trí mới truyền vào từ bên ngoài HOẶC mã yêu cầu thay đổi (để bắt lại vị trí cũ sau khi xóa)
-    bool isNewLocation = widget.initialCenter != null && widget.initialCenter != oldWidget.initialCenter;
-    bool isNewRequest = widget.mapRequestId != null && widget.mapRequestId != oldWidget.mapRequestId;
+    
+    // Tự động tải lại ghim khi có yêu cầu làm mới
+    if (widget.refreshKey != oldWidget.refreshKey) {
+      _loadAllHistoryMarkers();
+    }
 
-    if (isNewLocation || isNewRequest) {
-      if (widget.initialCenter != null) {
-        setState(() {
-          _selectedPosition = widget.initialMarker;
-          _selectedLabel = widget.initialLabel;
-        });
-        _animatedMapMove(widget.initialCenter!, 15.0);
-      }
+    // Nếu có tọa độ khởi tạo mới từ MainScreen truyền vào
+    if (widget.initialCenter != oldWidget.initialCenter && widget.initialCenter != null) {
+      setState(() {
+        _selectedPosition = widget.initialMarker;
+        _selectedLabel = widget.initialLabel;
+        _showHistory = false; // Đóng lịch sử tìm kiếm nếu đang mở
+      });
+      _animatedMapMove(widget.initialCenter!, 18.0);
     }
   }
 
   @override
   void dispose() {
+    AppState().historyNotifier.removeListener(_onHistoryChanged);
     _searchController.dispose();
     _searchFocus.dispose();
     _debounce?.cancel();
     super.dispose();
+  }
+
+  void _onHistoryChanged() {
+    if (mounted) {
+      setState(() {
+        _allHistoryMarkers = AppState().history.where((item) => item.latitude != null && item.longitude != null).toList();
+      });
+    }
+  }
+
+  Future<void> _initCache() async {
+    final dir = await getTemporaryDirectory();
+    setState(() {
+      _cachePath = dir.path;
+    });
+  }
+
+  Future<void> _loadAllHistoryMarkers() async {
+    // Hiển thị ngay những gì đang có trong AppState
+    if (AppState().history.isNotEmpty) {
+      _onHistoryChanged();
+      // Nếu đã có đủ dữ liệu (ví dụ > 500 mục), có thể không cần tải thêm ngay
+      if (AppState().history.length >= 500) return;
+    }
+
+    try {
+      // Tải tối đa 1000 mục để hiện trên bản đồ
+      final history = await _historyService.getHistory(limit: 1000);
+      if (mounted) {
+        AppState().setHistory(history); // Gộp vào kho chung
+      }
+    } catch (e) {
+      debugPrint('MapScreen: Lỗi tải ghim lịch sử - $e');
+    }
   }
 
   Future<void> _initLocation() async {
@@ -224,21 +300,200 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   }
 
   void _selectPlace(dynamic place) {
-    final lat = double.parse(place['lat']);
-    final lon = double.parse(place['lon']);
+    final lat = double.tryParse(place['lat'].toString()) ?? 0.0;
+    final lon = double.tryParse(place['lon'].toString()) ?? 0.0;
     final position = LatLng(lat, lon);
     
     _addToHistory(place); // Lưu vào lịch sử
     
-    _animatedMapMove(position, 15.0); // Sử dụng hiệu ứng di chuyển mượt mà
+    _flyTo(position, 18.0); // Sử dụng hiệu ứng bay
     setState(() {
       _selectedPosition = position;
-      _selectedLabel = place['display_name']; // Lưu nhãn địa chỉ để hiện cạnh Marker
+      _selectedLabel = place['display_name']; 
       _searchResults = [];
       _searchController.text = place['display_name'];
       _showHistory = false;
     });
     FocusScope.of(context).unfocus();
+  }
+
+  void _showHistoryItemDetails(HistoryItem item) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.45,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    item.imageUrl ?? '',
+                    width: 70,
+                    height: 70,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      width: 70,
+                      height: 70,
+                      color: Colors.grey[200],
+                      child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.displayName,
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        DateFormat('dd/MM/yyyy HH:mm').format(item.createdAt),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withAlpha(20),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text(
+                    '+15 XP',
+                    style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Địa điểm quét',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.place, color: AppColors.primary, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    item.location ?? 'Không có địa chỉ',
+                    style: const TextStyle(fontSize: 15, height: 1.4),
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                child: const Text('Đóng', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryMarker(HistoryItem item) {
+    Color markerColor;
+    IconData iconData;
+
+    switch (item.categoryId.toLowerCase()) {
+      case 'plastic':
+      case 'nhựa':
+        markerColor = Colors.orange;
+        iconData = Icons.recycling;
+        break;
+      case 'paper':
+      case 'giấy':
+        markerColor = Colors.blue;
+        iconData = Icons.description;
+        break;
+      case 'metal':
+      case 'kim loại':
+        markerColor = Colors.grey;
+        iconData = Icons.build;
+        break;
+      case 'biological':
+      case 'hữu cơ':
+        markerColor = Colors.green;
+        iconData = Icons.eco;
+        break;
+      default:
+        markerColor = AppColors.primary;
+        iconData = Icons.delete_outline;
+    }
+
+    return GestureDetector(
+      onTap: () => _showHistoryItemDetails(item),
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(50),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            color: markerColor,
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Icon(
+              iconData,
+              color: Colors.white,
+              size: 14,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _moveToCurrentLocation() {
@@ -266,8 +521,51 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate: Theme.of(context).brightness == Brightness.dark
+                    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
+                    : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.dinhhoang235.ecosort',
+                tileProvider: _cachePath != null 
+                    ? CachedTileProvider(
+                        store: FileCacheStore(_cachePath!),
+                      )
+                    : null,
+              ),
+              MarkerClusterLayerWidget(
+                options: MarkerClusterLayerOptions(
+                  maxClusterRadius: 45,
+                  size: const Size(40, 40),
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.all(50),
+                  maxZoom: 15,
+                  markers: _allHistoryMarkers.map((item) => Marker(
+                    point: LatLng(item.latitude!, item.longitude!),
+                    width: 32,
+                    height: 32,
+                    child: _buildCategoryMarker(item),
+                  )).toList(),
+                  builder: (context, markers) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        color: AppColors.primary,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withAlpha(80),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          markers.length.toString(),
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
               MarkerLayer(
                 markers: [
@@ -311,94 +609,92 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                   if (_selectedPosition != null)
                     Marker(
                       point: _selectedPosition!,
-                      width: 280,
-                      height: 60,
-                      alignment: Alignment.centerLeft,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                      width: 200,
+                      height: 150,
+                      alignment: Alignment.center,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        alignment: Alignment.center,
                         children: [
-                          // Cái Ghim đỏ + Nút X xóa
-                          Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Container(
-                                width: 45,
-                                height: 45,
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withAlpha(50),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
+                          // Dùng Transform để đưa đầu nhọn của ghim về chính giữa tâm Marker
+                          Transform.translate(
+                            offset: const Offset(0, -20), // Dịch lên 20px (1/2 size icon) để đầu nhọn nằm đúng tâm
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              alignment: Alignment.center,
+                              children: [
+                                // Biểu tượng ghim
+                                const Icon(Icons.location_on, color: AppColors.red, size: 40),
+                                // Nút X gắn vào ghim
+                                Positioned(
+                                  top: -5,
+                                  right: -5,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedPosition = null;
+                                        _selectedLabel = null;
+                                        _searchController.clear();
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withAlpha(30),
+                                            blurRadius: 4,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                        border: Border.all(color: Colors.grey.withAlpha(40)),
+                                      ),
+                                      child: const Icon(Icons.close, size: 10, color: AppColors.red),
                                     ),
-                                  ],
+                                  ),
                                 ),
-                                child: const Icon(Icons.location_on, color: AppColors.red, size: 30),
-                              ),
-                              // Nút X
-                              Positioned(
-                                top: -5,
-                                right: -5,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedPosition = null;
-                                      _selectedLabel = null;
-                                      _searchController.clear(); // Xóa luôn text trong ô tìm kiếm
-                                    });
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
+                              ],
+                            ),
+                          ),
+                          
+                          // Nhãn địa điểm - Nằm trên ghim
+                          Positioned(
+                            bottom: 125, // Tạo khoảng cách 10px so với đỉnh ghim (150-35+10)
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (_selectedLabel != null)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
-                                      shape: BoxShape.circle,
+                                      borderRadius: BorderRadius.circular(8),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.black.withAlpha(30),
-                                          blurRadius: 4,
+                                          color: Colors.black.withAlpha(40),
+                                          blurRadius: 8,
                                           offset: const Offset(0, 2),
                                         ),
                                       ],
-                                      border: Border.all(color: Colors.grey.withAlpha(40)),
                                     ),
-                                    child: const Icon(Icons.close, size: 10, color: AppColors.red),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (_selectedLabel != null)
-                            SizedBox(
-                              width: 220,
-                              child: Container(
-                                margin: const EdgeInsets.only(left: 8),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withAlpha(210), // Độ trong suốt vừa phải để vẫn đọc được chữ
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withAlpha(15),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
+                                    constraints: const BoxConstraints(maxWidth: 180),
+                                    child: Text(
+                                      _selectedLabel!,
+                                      textAlign: TextAlign.center,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.textPrimary,
+                                      ),
                                     ),
-                                  ],
-                                ),
-                                child: Text(
-                                  _selectedLabel!,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.textPrimary,
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
+                              ],
                             ),
+                          ),
                         ],
                       ),
                     ),
@@ -439,19 +735,32 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                       controller: _searchController,
                       focusNode: _searchFocus,
                       onChanged: _onSearchChanged,
+                      onSubmitted: (_) {
+                        // Nếu đã có ghim được chọn, nhấn Enter sẽ đưa màn hình về ghim đó
+                        if (_selectedPosition != null) {
+                          _animatedMapMove(_selectedPosition!, 18.0);
+                        }
+                      },
                       decoration: InputDecoration(
                         hintText: 'Tìm kiếm địa điểm...',
                         hintStyle: TextStyle(color: Colors.grey[400], fontSize: 15),
-                        prefixIcon: _isSearching 
-                          ? Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: SizedBox(
-                                width: 10, 
-                                height: 10, 
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.grey[400])
-                              ),
-                            )
-                          : Icon(Icons.search, color: Colors.grey[400]),
+                        prefixIcon: GestureDetector(
+                          onTap: () {
+                            if (_selectedPosition != null) {
+                              _animatedMapMove(_selectedPosition!, 18.0);
+                            }
+                          },
+                          child: _isSearching 
+                            ? Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: SizedBox(
+                                  width: 10, 
+                                  height: 10, 
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.grey[400])
+                                ),
+                              )
+                            : Icon(Icons.search, color: Colors.grey[400]),
+                        ),
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(vertical: 18),
                         suffixIcon: _searchController.text.isNotEmpty 
@@ -466,11 +775,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                               ),
                               onPressed: () {
                                 _searchController.clear();
+                                _searchFocus.requestFocus(); // Tự động focus lại vào ô search
                                 setState(() {
                                   _searchResults = [];
                                   _selectedPosition = null;
                                   _selectedLabel = null;
-                                  _showHistory = _searchFocus.hasFocus;
+                                  _showHistory = true; // Hiện lại lịch sử khi xóa sạch
                                 });
                               },
                             )
@@ -568,7 +878,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                                   ),
                                   TextButton(
                                     onPressed: _clearHistory,
-                                    child: const Text('Xóa tất cả', style: TextStyle(fontSize: 12, color: AppColors.red)),
+                                    child: Text('Xóa tất cả', style: TextStyle(fontSize: 12, color: AppColors.red)),
                                   ),
                                 ],
                               ),

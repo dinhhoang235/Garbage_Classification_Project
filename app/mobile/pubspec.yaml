@@ -54,6 +54,11 @@ dependencies:
   latlong2: ^0.9.1
   geolocator: ^14.0.2
   http: ^1.6.0
+  flutter_map_cache: ^1.5.2
+  dio_cache_interceptor_file_store: ^1.2.3
+  flutter_map_animations: ^0.10.0
+  intl: ^0.20.2
+  flutter_map_marker_cluster: ^8.2.2
 
 dev_dependencies:
   flutter_test:
