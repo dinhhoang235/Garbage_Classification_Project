@@ -238,6 +238,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       'location': item.location ?? '',
       'imageUrl': item.imageUrl,
       'confidence': item.confidence,
+      'guide': item.category?.disposalGuide ?? 'Đối với loại rác này, bạn nên làm sạch trước khi bỏ vào thùng rác để tăng hiệu quả tái chế và tránh mùi hôi.',
     };
   }
 

@@ -16,7 +16,6 @@ class HistoryDetailScreen extends StatelessWidget {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Chi tiết hoạt động'),
-        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(LucideIcons.chevronLeft),
@@ -170,7 +169,6 @@ class HistoryDetailScreen extends StatelessWidget {
                     ),
                   ),
                   _buildDetailRow(LucideIcons.info, 'Trạng thái', 'Đã xác nhận bởi hệ thống AI'),
-                  _buildDetailRow(LucideIcons.scale, 'Khối lượng ước tính', '0.5 kg'),
                 ],
               ),
             ),
@@ -204,7 +202,7 @@ class HistoryDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Đối với loại rác này, bạn nên làm sạch trước khi bỏ vào thùng rác để tăng hiệu quả tái chế và tránh mùi hôi.',
+                    item['guide'] ?? 'Đối với loại rác này, bạn nên làm sạch trước khi bỏ vào thùng rác để tăng hiệu quả tái chế và tránh mùi hôi.',
                     style: TextStyle(color: AppColors.textSecondary, height: 1.5),
                   ),
                 ],

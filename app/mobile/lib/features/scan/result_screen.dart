@@ -309,7 +309,7 @@ class _ResultScreenState extends State<ResultScreen> {
                   SizedBox(
                     width: 90,
                     child: Text(
-                      PredictResult.labelToName[entry.key] ?? entry.key,
+                      isTop ? result.displayName : _translateLabel(entry.key),
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: isTop ? FontWeight.bold : FontWeight.normal,
@@ -385,5 +385,21 @@ class _ResultScreenState extends State<ResultScreen> {
         ],
       ),
     );
+  }
+
+  String _translateLabel(String label) {
+    switch (label) {
+      case 'battery': return 'Pin & Điện tử';
+      case 'biological': return 'Hữu cơ';
+      case 'cardboard': return 'Bìa carton';
+      case 'clothes': return 'Quần áo';
+      case 'glass': return 'Thủy tinh';
+      case 'metal': return 'Kim loại';
+      case 'paper': return 'Giấy';
+      case 'plastic': return 'Nhựa';
+      case 'shoes': return 'Giày dép';
+      case 'trash': return 'Rác thường';
+      default: return label;
+    }
   }
 }

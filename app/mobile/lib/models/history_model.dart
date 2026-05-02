@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../core/theme/app_colors.dart';
+import 'waste_category_model.dart';
 
 class HistoryItem {
   final int id;
@@ -12,6 +13,7 @@ class HistoryItem {
   final String? location;
   final int pointsEarned;
   final DateTime createdAt;
+  final WasteCategory? category;
 
   HistoryItem({
     required this.id,
@@ -23,9 +25,15 @@ class HistoryItem {
     this.location,
     required this.pointsEarned,
     required this.createdAt,
+    this.category,
   });
 
   factory HistoryItem.fromJson(Map<String, dynamic> json) {
+    String? dateStr = json['created_at']?.toString();
+    if (dateStr != null && !dateStr.endsWith('Z') && !dateStr.contains('+')) {
+      dateStr += 'Z';
+    }
+
     return HistoryItem(
       id: json['id'] ?? 0,
       userId: json['user_id'] ?? 0,
@@ -35,9 +43,10 @@ class HistoryItem {
       imageUrl: json['image_url'],
       location: json['location'],
       pointsEarned: json['points_earned'] ?? 0,
-      createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at']) ?? DateTime.now()
+      createdAt: dateStr != null
+          ? (DateTime.tryParse(dateStr)?.toLocal() ?? DateTime.now())
           : DateTime.now(),
+      category: json['category'] != null ? WasteCategory.fromJson(json['category']) : null,
     );
   }
 
@@ -52,63 +61,15 @@ class HistoryItem {
     };
   }
 
-  // Helper: Map server label → display name
-  static const Map<String, String> _labelToName = {
-    'battery': 'Pin & Điện tử',
-    'biological': 'Hữu cơ',
-    'cardboard': 'Bìa carton',
-    'clothes': 'Quần áo',
-    'glass': 'Thủy tinh',
-    'metal': 'Kim loại',
-    'paper': 'Giấy',
-    'plastic': 'Nhựa',
-    'shoes': 'Giày dép',
-    'trash': 'Rác thường',
-  };
-
-  static const Map<String, String> _labelToType = {
-    'battery': 'Nguy hại',
-    'biological': 'Hữu cơ',
-    'cardboard': 'Tái chế',
-    'clothes': 'Tái chế',
-    'glass': 'Tái chế',
-    'metal': 'Tái chế',
-    'paper': 'Tái chế',
-    'plastic': 'Tái chế',
-    'shoes': 'Tái chế',
-    'trash': 'Thường',
-  };
-
-  static const Map<String, Color> _labelToColor = {
-    'battery': AppColors.red,
-    'biological': AppColors.primary,
-    'cardboard': AppColors.orange,
-    'clothes': AppColors.blue,
-    'glass': Colors.teal,
-    'metal': Colors.blueGrey,
-    'paper': AppColors.orange,
-    'plastic': AppColors.blue,
-    'shoes': Colors.brown,
-    'trash': AppColors.textTertiary,
-  };
-
-  static const Map<String, IconData> _labelToIcon = {
-    'battery': LucideIcons.zap,
-    'biological': LucideIcons.leaf,
-    'cardboard': LucideIcons.package,
-    'clothes': LucideIcons.shirt,
-    'glass': LucideIcons.wine,
-    'metal': LucideIcons.hammer,
-    'paper': LucideIcons.fileText,
-    'plastic': LucideIcons.glassWater,
-    'shoes': LucideIcons.footprints,
-    'trash': LucideIcons.trash2,
-  };
-
-  String get displayName => _labelToName[categoryId] ?? title;
-  String get type => _labelToType[categoryId] ?? 'Thường';
-  Color get color => _labelToColor[categoryId] ?? AppColors.textTertiary;
-  IconData get icon => _labelToIcon[categoryId] ?? LucideIcons.trash2;
+  String get displayName => category?.name ?? title;
+  String get type {
+    if (categoryId == 'battery') return 'Nguy hại';
+    if (categoryId == 'biological') return 'Hữu cơ';
+    if (categoryId == 'trash') return 'Thường';
+    return 'Tái chế';
+  }
+  Color get color => category?.color ?? AppColors.textTertiary;
+  IconData get icon => category?.icon ?? LucideIcons.trash2;
 
   String get formattedTime {
     final h = createdAt.hour.toString().padLeft(2, '0');

@@ -127,10 +127,27 @@ async def predict(file: UploadFile = File(...), db=Depends(get_db)) -> JSONRespo
 
     top_index = int(np.argmax(predictions))
     top_score = float(np.max(predictions))
+    label = CLASS_NAMES[top_index]
+    
+    from app.models.category import WasteCategory
+    category = db.query(WasteCategory).filter(WasteCategory.id == label).first()
+    category_data = None
+    if category:
+        category_data = {
+            "id": category.id,
+            "name": category.name,
+            "description": category.description,
+            "icon_name": category.icon_name,
+            "color_hex": category.color_hex,
+            "examples": category.examples,
+            "disposal_guide": category.disposal_guide
+        }
+
     result = {
-        "label": CLASS_NAMES[top_index],
+        "label": label,
         "confidence": top_score,
         "image_url": image_url,
         "scores": {CLASS_NAMES[i]: float(predictions[i]) for i in range(len(CLASS_NAMES))},
+        "category": category_data
     }
     return JSONResponse(content=result)

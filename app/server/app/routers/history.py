@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List
 
 from app.core.database import get_db
@@ -20,7 +20,7 @@ def read_history(
     """
     Retrieve classification history for the current user.
     """
-    history_items = db.query(History).filter(History.user_id == current_user.id).order_by(History.created_at.desc()).offset(skip).limit(limit).all()
+    history_items = db.query(History).options(joinedload(History.category)).filter(History.user_id == current_user.id).order_by(History.created_at.desc()).offset(skip).limit(limit).all()
     return history_items
 
 @router.post("", response_model=HistorySchema)
@@ -78,5 +78,5 @@ def create_history_item(
         
     db.add(history_item)
     db.commit()
-    db.refresh(history_item)
+    history_item = db.query(History).options(joinedload(History.category)).filter(History.id == history_item.id).first()
     return history_item

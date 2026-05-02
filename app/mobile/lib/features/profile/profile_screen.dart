@@ -257,7 +257,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                       Text(
-                        '${_currentUser!.points.toString().replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]}.")} / 3.000 XP',
+                        '${_currentUser!.totalXP.toString().replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]}.")} / ${_currentUser!.nextLevelTotalXP.toString().replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]}.")} XP',
                         style: TextStyle(color: theme.textTheme.bodyMedium?.color, fontSize: 12),
                       ),
                     ],
@@ -270,7 +270,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: LinearProgressIndicator(
-                value: _currentUser!.xpProgress,
+                value: (_currentUser!.xpProgress / _currentUser!.currentLevelMaxXP).clamp(0.0, 1.0),
                 backgroundColor: theme.brightness == Brightness.dark ? Colors.white.withAlpha(26) : AppColors.primaryLight,
                 color: AppColors.primary,
                 minHeight: 8,
