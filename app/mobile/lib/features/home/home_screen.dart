@@ -9,6 +9,8 @@ import '../../models/history_model.dart';
 import '../../models/waste_category_model.dart';
 import '../../core/services/category_service.dart';
 import '../../core/services/history_service.dart';
+import '../../core/services/user_service.dart';
+import '../../core/state/app_state.dart';
 import '../../widgets/skeleton.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -50,7 +52,23 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadData() async {
-    await Future.wait([_loadCategories(), _loadLatestHistory()]);
+    await Future.wait([
+      _loadCategories(),
+      _loadLatestHistory(),
+      _refreshProfile(),
+    ]);
+  }
+
+  Future<void> _refreshProfile() async {
+    if (!isLoggedIn) return;
+    try {
+      final user = await UserService().getProfile();
+      if (user != null && mounted) {
+        AppState().setUser(user);
+      }
+    } catch (e) {
+      debugPrint('HomeScreen._refreshProfile error: $e');
+    }
   }
 
   Future<void> _loadCategories() async {
@@ -285,6 +303,33 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
+                Text(
+                  '${user.totalXP} / ${user.nextLevelTotalXP} XP',
+                  style: TextStyle(
+                    color: Colors.white.withAlpha(204),
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Còn ${user.nextLevelTotalXP - user.totalXP} XP nữa để lên Level ${user.level + 1}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    value: (user.xpProgress / user.currentLevelMaxXP).clamp(0.0, 1.0),
+                    backgroundColor: Colors.white.withAlpha(51),
+                    color: Colors.white,
+                    minHeight: 6,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
@@ -298,7 +343,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(width: 4),
                       Text(
                         'Level ${user.level} - ${user.levelName}',
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                        style: const TextStyle(color: Colors.white, fontSize: 11),
                       ),
                     ],
                   ),
@@ -469,6 +514,7 @@ class _HomeScreenState extends State<HomeScreen> {
         points: '+${_latestHistoryItem!.pointsEarned} điểm',
         icon: _latestHistoryItem!.icon,
         color: _latestHistoryItem!.color,
+        imageUrl: _latestHistoryItem!.imageUrl,
         onTap: widget.onHistoryRequested,
       );
     }

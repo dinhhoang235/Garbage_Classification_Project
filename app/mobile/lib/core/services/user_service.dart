@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path_provider/path_provider.dart';
 import '../constants/api_constants.dart';
 import 'api_client.dart';
 import '../../models/user_model.dart';
@@ -67,8 +69,12 @@ class UserService {
 
   /// Bước 2: PUT file trực tiếp lên MinIO, Bước 3: cập nhật avatar_url về server
   /// Trả về User đã cập nhật hoặc null nếu lỗi
-  Future<User?> uploadAvatar(File imageFile, {String contentType = 'image/jpeg'}) async {
+  Future<User?> uploadAvatar(File imageFile, {String contentType = 'image/webp'}) async {
     try {
+      // 0. Nén ảnh trước khi upload sang WebP
+      final File? compressedFile = await _compressAvatar(imageFile);
+      final File fileToUpload = compressedFile ?? imageFile;
+
       // 1. Lấy presigned URL
       final urlData = await getAvatarUploadUrl(contentType: contentType);
       if (urlData == null) throw Exception('Không thể lấy upload URL');
@@ -76,21 +82,16 @@ class UserService {
       final uploadUrl = urlData['upload_url'] as String;
       final publicUrl = urlData['public_url'] as String;
 
-      // 2. Đọc file bytes
-      final bytes = await imageFile.readAsBytes();
-
-      // 3. PUT trực tiếp lên MinIO (dùng Dio riêng, không gắn JWT)
-      final rawDio = Dio();
-      final uploadResponse = await rawDio.put(
+      // 2. PUT trực tiếp lên MinIO
+      final fileLength = await fileToUpload.length();
+      final uploadResponse = await Dio().put(
         uploadUrl,
-        data: Stream.fromIterable(bytes.map((e) => [e])),
+        data: fileToUpload.openRead(),
         options: Options(
           headers: {
             HttpHeaders.contentTypeHeader: contentType,
-            HttpHeaders.contentLengthHeader: bytes.length,
+            HttpHeaders.contentLengthHeader: fileLength,
           },
-          sendTimeout: const Duration(seconds: 30),
-          receiveTimeout: const Duration(seconds: 30),
         ),
       );
 
@@ -104,6 +105,27 @@ class UserService {
       debugPrint('UserService.uploadAvatar error: $e');
       return null;
     }
+  }
+
+  Future<File?> _compressAvatar(File file) async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final targetPath = "${tempDir.path}/avatar_${DateTime.now().millisecondsSinceEpoch}.webp";
+
+      final result = await FlutterImageCompress.compressAndGetFile(
+        file.absolute.path,
+        targetPath,
+        quality: 95,
+        minWidth: 512,
+        minHeight: 512,
+        format: CompressFormat.webp,
+      );
+
+      if (result != null) return File(result.path);
+    } catch (e) {
+      debugPrint('Avatar compression error: $e');
+    }
+    return null;
   }
 }
 

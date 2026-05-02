@@ -8,6 +8,7 @@ class HistoryItemCard extends StatelessWidget {
   final String points;
   final IconData icon;
   final Color color;
+  final String? imageUrl;
   final VoidCallback? onTap;
 
   const HistoryItemCard({
@@ -18,6 +19,7 @@ class HistoryItemCard extends StatelessWidget {
     required this.points,
     required this.icon,
     required this.color,
+    this.imageUrl,
     this.onTap,
   });
 
@@ -41,12 +43,23 @@ class HistoryItemCard extends StatelessWidget {
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     color: color.withAlpha(26),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(icon, color: color, size: 20),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: imageUrl != null && imageUrl!.isNotEmpty
+                        ? Image.network(
+                            imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                Icon(icon, color: color, size: 20),
+                          )
+                        : Icon(icon, color: color, size: 20),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

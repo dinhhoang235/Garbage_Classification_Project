@@ -207,7 +207,7 @@ class RankDetailScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          _buildRequirementItem(LucideIcons.scan, 'Quét rác hàng ngày (+10 XP/vật dụng)'),
+          _buildRequirementItem(LucideIcons.scan, 'Quét rác hàng ngày (+20 XP/vật dụng)'),
           _buildRequirementItem(LucideIcons.award, 'Hoàn thành các thành tích đặc biệt'),
           _buildRequirementItem(LucideIcons.users, 'Chia sẻ mẹo sống xanh cho cộng đồng'),
         ],

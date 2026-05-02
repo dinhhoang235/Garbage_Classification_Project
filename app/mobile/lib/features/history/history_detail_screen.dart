@@ -35,20 +35,58 @@ class HistoryDetailScreen extends StatelessWidget {
             const SizedBox(height: 20),
             // Header Section with Icon
             Center(
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: color.withAlpha(20),
-                  shape: BoxShape.circle,
-                ),
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: color.withAlpha(40),
-                    shape: BoxShape.circle,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    width: 160,
+                    height: 160,
+                    decoration: BoxDecoration(
+                      color: color.withAlpha(15),
+                      shape: BoxShape.circle,
+                    ),
                   ),
-                  child: Icon(item['icon'], color: color, size: 48),
-                ),
+                  Container(
+                    width: 140,
+                    height: 140,
+                    decoration: BoxDecoration(
+                      color: color.withAlpha(25),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(70),
+                    child: Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        color: color.withAlpha(40),
+                        shape: BoxShape.circle,
+                      ),
+                      child: item['imageUrl'] != null && item['imageUrl'].toString().isNotEmpty
+                          ? Image.network(
+                              item['imageUrl'],
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Icon(item['icon'], color: color, size: 48),
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Center(
+                                  child: CircularProgressIndicator(
+                                    value: loadingProgress.expectedTotalBytes != null
+                                        ? loadingProgress.cumulativeBytesLoaded /
+                                            loadingProgress.expectedTotalBytes!
+                                        : null,
+                                    strokeWidth: 2,
+                                    color: color,
+                                  ),
+                                );
+                              },
+                            )
+                          : Icon(item['icon'], color: color, size: 48),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 24),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:camera/camera.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/services/theme_service.dart';
@@ -10,8 +11,17 @@ import 'core/state/app_state.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'features/main_screen.dart';
 
+List<CameraDescription> cameras = [];
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize cameras
+  try {
+    cameras = await availableCameras();
+  } catch (e) {
+    debugPrint('Camera error: $e');
+  }
 
   // Load environment variables
   await dotenv.load(fileName: '.env');

@@ -251,10 +251,19 @@ class _AchievementsScreenState extends State<AchievementsScreen> with SingleTick
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${currentUser.points.toString().replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]}.")} / 3.000 XP',
+                        '${currentUser.totalXP} / ${currentUser.nextLevelTotalXP} XP',
                         style: TextStyle(
                           color: Colors.white.withAlpha(204),
                           fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Còn ${currentUser.nextLevelTotalXP - currentUser.totalXP} XP nữa để lên Level ${currentUser.level + 1}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
                         ),
                       ),
                     ],
@@ -266,7 +275,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> with SingleTick
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: LinearProgressIndicator(
-                value: currentUser.xpProgress,
+                value: (currentUser.xpProgress / currentUser.currentLevelMaxXP).clamp(0.0, 1.0),
                 backgroundColor: Colors.white.withAlpha(51),
                 color: Colors.white,
                 minHeight: 10,

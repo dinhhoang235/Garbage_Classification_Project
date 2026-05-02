@@ -88,7 +88,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     setState(() => _isUploadingAvatar = true);
     try {
       final updatedUser = await _userService.uploadAvatar(_pendingAvatarFile!);
-      if (!context.mounted) return;
+      if (!mounted) return;
       if (updatedUser != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

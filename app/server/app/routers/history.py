@@ -42,9 +42,38 @@ def create_history_item(
         points_earned=item_in.points_earned
     )
     
-    # Optionally add points to user
+    # Update points, XP and Level
     if item_in.points_earned:
         current_user.points += item_in.points_earned
+        
+        # Synchronize with Mobile UI Level Thresholds
+        # L1: 0, L2: 200, L3: 500, L4: 1000, L5: 1500, L6: 2000, L7: 3000, L8: 5000, L9: 8000, L10: 12000
+        LEVEL_THRESHOLDS = [0, 200, 500, 1000, 1500, 2000, 3000, 5000, 8000, 12000]
+        XP_PER_SCAN = 20 # 10 items = 200 XP (Level 2)
+        
+        # Calculate new total XP from scratch based on scan history
+        # This fixes users who had incorrect high levels from legacy logic
+        scan_count = db.query(History).filter(History.user_id == current_user.id).count()
+        new_total_xp = (scan_count + 1) * XP_PER_SCAN
+        
+        # Determine new level and relative progress
+        new_level = 1
+        for i, threshold in enumerate(LEVEL_THRESHOLDS):
+            if new_total_xp >= threshold:
+                new_level = i + 1
+            else:
+                break
+        
+        # Calculate xp_progress relative to the current level
+        if new_level >= len(LEVEL_THRESHOLDS):
+            current_user.xp_progress = float(new_total_xp - LEVEL_THRESHOLDS[-1])
+            current_user.level = len(LEVEL_THRESHOLDS)
+        else:
+            base_xp = LEVEL_THRESHOLDS[new_level - 1]
+            current_user.xp_progress = float(new_total_xp - base_xp)
+            current_user.level = new_level
+
+        db.commit()
         db.add(current_user)
         
     db.add(history_item)

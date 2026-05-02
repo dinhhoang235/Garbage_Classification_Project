@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../widgets/eco_button.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/services/history_service.dart';
+import '../../core/services/user_service.dart';
 import '../../core/state/app_state.dart';
 import '../../models/predict_result_model.dart';
 import '../../models/history_model.dart';
@@ -26,16 +27,19 @@ class _ResultScreenState extends State<ResultScreen> {
   bool _isSaving = false;
   bool _saved = false;
 
+
+  @override
+  void initState() {
+    super.initState();
+    // Tự động lưu kết quả và tích điểm ngay khi xem kết quả
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _saveToHistory();
+    });
+  }
+
   Future<void> _saveToHistory() async {
-    if (!AppState().isLoggedIn) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đăng nhập để lưu kết quả và tích điểm'),
-          backgroundColor: AppColors.orange,
-        ),
-      );
-      return;
-    }
+    if (!AppState().isLoggedIn) return;
+    if (_saved || _isSaving) return;
 
     setState(() => _isSaving = true);
 
@@ -57,16 +61,37 @@ class _ResultScreenState extends State<ResultScreen> {
 
       if (saved != null) {
         setState(() => _saved = true);
+        AppState().notifyHistoryUpdated(); // Cập nhật màn hình lịch sử ngay lập tức
+        
+        // Tự động cập nhật thông tin người dùng (điểm số, cấp độ) mới nhất từ server
+        final updatedUser = await UserService().getProfile();
+        if (updatedUser != null) {
+          AppState().setUser(updatedUser);
+        }
+
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('+${widget.result.pointsEarned} điểm đã được cộng vào tài khoản!'),
+            content: Text('🎉 Đã tự động tích +${widget.result.pointsEarned} điểm vào tài khoản!'),
             backgroundColor: AppColors.primary,
+            duration: const Duration(seconds: 2),
           ),
         );
       } else {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Không thể lưu. Vui lòng thử lại.'),
+            content: Text('Không thể lưu kết quả quét. Vui lòng thử lại.'),
+            backgroundColor: AppColors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('ResultScreen._saveToHistory error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lỗi kết nối khi lưu kết quả.'),
             backgroundColor: AppColors.red,
           ),
         );
@@ -201,20 +226,14 @@ class _ResultScreenState extends State<ResultScreen> {
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: _saved
-                      ? EcoButton(
-                          label: 'Đã lưu ✓',
-                          onPressed: () {
-                            Navigator.pop(context);
-                            Navigator.pop(context);
-                          },
-                          isPrimary: true,
-                        )
-                      : EcoButton(
-                          label: _isSaving ? 'Đang lưu...' : 'Lưu & Tích điểm',
-                          onPressed: _isSaving ? () {} : _saveToHistory,
-                          isPrimary: true,
-                        ),
+                  child: EcoButton(
+                    label: 'Xong',
+                    onPressed: () {
+                      // Quay về màn hình chính
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                    },
+                    isPrimary: true,
+                  ),
                 ),
               ],
             ),

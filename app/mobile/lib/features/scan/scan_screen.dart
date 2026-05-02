@@ -1,11 +1,14 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:camera/camera.dart';
 import 'result_screen.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/services/predict_service.dart';
 import '../../core/state/app_state.dart';
+import '../../main.dart' as main_dart;
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key});
@@ -14,30 +17,135 @@ class ScanScreen extends StatefulWidget {
   State<ScanScreen> createState() => _ScanScreenState();
 }
 
-class _ScanScreenState extends State<ScanScreen> {
+class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
   File? _selectedImage;
   bool _isAnalyzing = false;
   final _imagePicker = ImagePicker();
   final _predictService = PredictService();
 
+  CameraController? _controller;
+  int _selectedCameraIndex = 0;
+  bool _isFlashOn = false;
+  double _buttonScale = 1.0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    if (main_dart.cameras.isNotEmpty) {
+      // Ưu tiên camera sau khi mở ứng dụng
+      final backCameraIndex = main_dart.cameras.indexWhere(
+        (camera) => camera.lensDirection == CameraLensDirection.back,
+      );
+      _selectedCameraIndex = backCameraIndex != -1 ? backCameraIndex : 0;
+      
+      _initCamera(main_dart.cameras[_selectedCameraIndex]);
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final CameraController? cameraController = _controller;
+
+    if (cameraController == null || !cameraController.value.isInitialized) {
+      return;
+    }
+
+    if (state == AppLifecycleState.inactive) {
+      cameraController.dispose();
+    } else if (state == AppLifecycleState.resumed) {
+      _initCamera(cameraController.description);
+    }
+  }
+
+  Future<void> _initCamera(CameraDescription cameraDescription) async {
+    if (_controller != null) {
+      await _controller!.dispose();
+    }
+
+    _controller = CameraController(
+      cameraDescription,
+      ResolutionPreset.high,
+      enableAudio: false,
+    );
+
+    try {
+      await _controller!.initialize();
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      debugPrint('Camera init error: $e');
+    }
+  }
+
+  Future<void> _toggleCamera() async {
+    if (main_dart.cameras.length < 2) return;
+    _selectedCameraIndex = (_selectedCameraIndex + 1) % main_dart.cameras.length;
+    await _initCamera(main_dart.cameras[_selectedCameraIndex]);
+  }
+
+  Future<void> _toggleFlash() async {
+    if (_controller == null || !_controller!.value.isInitialized) return;
+    try {
+      _isFlashOn = !_isFlashOn;
+      await _controller!.setFlashMode(
+        _isFlashOn ? FlashMode.torch : FlashMode.off,
+      );
+      setState(() {});
+    } catch (e) {
+      debugPrint('Flash error: $e');
+    }
+  }
+
   Future<void> _pickImage(ImageSource source) async {
     try {
       final pickedFile = await _imagePicker.pickImage(
         source: source,
-        imageQuality: 85,
-        maxWidth: 1024,
-        maxHeight: 1024,
+        imageQuality: 90,
+        maxWidth: 1200,
+        maxHeight: 1200,
       );
-      if (pickedFile != null && mounted) {
+      if (pickedFile == null) return;
+
+      // Cho phép người dùng di chuyển và cắt ảnh để khớp với vùng quét
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: pickedFile.path,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Căn chỉnh ảnh rác',
+            toolbarColor: AppColors.primary,
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: true,
+            hideBottomControls: false,
+          ),
+          IOSUiSettings(
+            title: 'Căn chỉnh ảnh rác',
+            aspectRatioLockEnabled: true,
+            resetButtonHidden: true,
+          ),
+        ],
+      );
+
+      if (croppedFile != null && mounted) {
         setState(() {
-          _selectedImage = File(pickedFile.path);
+          _selectedImage = File(croppedFile.path);
         });
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Không thể truy cập máy ảnh/thư viện ảnh'),
+            content: Text('Không thể xử lý ảnh đã chọn'),
             backgroundColor: AppColors.red,
           ),
         );
@@ -46,16 +154,32 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   Future<void> _analyzeImage() async {
-    if (_selectedImage == null) {
-      // If no image selected, open camera
-      await _pickImage(ImageSource.camera);
-      return;
+    File? imageToAnalyze = _selectedImage;
+
+    if (imageToAnalyze == null) {
+      // Capture from camera if no image selected
+      if (_controller == null || !_controller!.value.isInitialized) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Camera chưa sẵn sàng')),
+        );
+        return;
+      }
+
+      try {
+        setState(() => _isAnalyzing = true);
+        final XFile file = await _controller!.takePicture();
+        imageToAnalyze = File(file.path);
+      } catch (e) {
+        debugPrint('Capture error: $e');
+        setState(() => _isAnalyzing = false);
+        return;
+      }
+    } else {
+      setState(() => _isAnalyzing = true);
     }
 
-    setState(() => _isAnalyzing = true);
-
     try {
-      final result = await _predictService.predict(_selectedImage!);
+      final result = await _predictService.predict(imageToAnalyze);
       if (!mounted) return;
 
       if (result != null) {
@@ -64,7 +188,7 @@ class _ScanScreenState extends State<ScanScreen> {
           MaterialPageRoute(
             builder: (context) => ResultScreen(
               result: result,
-              imageFile: _selectedImage,
+              imageFile: imageToAnalyze,
             ),
           ),
         );
@@ -93,18 +217,24 @@ class _ScanScreenState extends State<ScanScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Background: selected image or placeholder
+          // Background: Camera Preview or selected image
           Positioned.fill(
             child: _selectedImage != null
-                ? Image.file(_selectedImage!, fit: BoxFit.cover)
-                : Image.network(
-                    'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?q=80&w=2070&auto=format&fit=crop',
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      color: Colors.grey[900],
-                      child: const Icon(LucideIcons.camera, color: Colors.white24, size: 50),
-                    ),
-                  ),
+                ? Container(
+                    color: Colors.black,
+                    child: Image.file(_selectedImage!, fit: BoxFit.contain),
+                  )
+                : (_controller != null && _controller!.value.isInitialized)
+                    ? AspectRatio(
+                        aspectRatio: 1 / _controller!.value.aspectRatio,
+                        child: CameraPreview(_controller!),
+                      )
+                    : Container(
+                        color: Colors.black,
+                        child: const Center(
+                          child: CircularProgressIndicator(color: AppColors.primary),
+                        ),
+                      ),
           ),
 
           // Overlay gradient
@@ -168,12 +298,25 @@ class _ScanScreenState extends State<ScanScreen> {
                         onPressed: () => Navigator.pop(context),
                         icon: const Icon(LucideIcons.x, color: Colors.white, size: 28),
                       ),
-                      if (_selectedImage != null)
-                        TextButton.icon(
-                          onPressed: () => setState(() => _selectedImage = null),
-                          icon: const Icon(LucideIcons.refreshCw, color: Colors.white, size: 16),
-                          label: const Text('Chọn lại', style: TextStyle(color: Colors.white)),
-                        ),
+                      Row(
+                        children: [
+                          if (_selectedImage == null && _controller != null)
+                            IconButton(
+                              onPressed: _toggleFlash,
+                              icon: Icon(
+                                _isFlashOn ? LucideIcons.zap : LucideIcons.zapOff,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                          if (_selectedImage != null)
+                            TextButton.icon(
+                              onPressed: () => setState(() => _selectedImage = null),
+                              icon: const Icon(LucideIcons.refreshCw, color: Colors.white, size: 16),
+                              label: const Text('Chọn lại', style: TextStyle(color: Colors.white)),
+                            ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -294,44 +437,63 @@ class _ScanScreenState extends State<ScanScreen> {
 
                       // Shutter / Analyze button
                       GestureDetector(
+                        onTapDown: (_) => setState(() => _buttonScale = 0.9),
+                        onTapUp: (_) => setState(() => _buttonScale = 1.0),
+                        onTapCancel: () => setState(() => _buttonScale = 1.0),
                         onTap: _isAnalyzing ? null : _analyzeImage,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: _selectedImage != null ? AppColors.primary : Colors.white,
-                              width: 3,
-                            ),
-                          ),
-                          child: Center(
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              width: 65,
-                              height: 65,
-                              decoration: BoxDecoration(
-                                color: _selectedImage != null ? AppColors.primary : Colors.white,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: _selectedImage != null
-                                      ? AppColors.primaryDark
-                                      : AppColors.primary,
-                                  width: 4,
-                                ),
+                        child: AnimatedScale(
+                          duration: const Duration(milliseconds: 100),
+                          scale: _buttonScale,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: (_selectedImage != null || _isAnalyzing)
+                                    ? AppColors.primary
+                                    : Colors.white,
+                                width: 3,
                               ),
-                              child: _selectedImage != null
-                                  ? const Icon(LucideIcons.zap, color: Colors.white, size: 28)
-                                  : null,
+                              boxShadow: [
+                                if (_selectedImage != null && !_isAnalyzing)
+                                  BoxShadow(
+                                    color: AppColors.primary.withAlpha(100),
+                                    blurRadius: 15,
+                                    spreadRadius: 2,
+                                  ),
+                              ],
+                            ),
+                            child: Center(
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                width: 65,
+                                height: 65,
+                                decoration: BoxDecoration(
+                                  color: (_selectedImage != null || _isAnalyzing)
+                                      ? AppColors.primary
+                                      : Colors.white,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: (_selectedImage != null || _isAnalyzing)
+                                        ? AppColors.primaryDark
+                                        : AppColors.primary,
+                                    width: 4,
+                                  ),
+                                ),
+                                child: (_selectedImage != null || _isAnalyzing)
+                                    ? const Icon(LucideIcons.zap, color: Colors.white, size: 28)
+                                    : null,
+                              ),
                             ),
                           ),
                         ),
                       ),
 
-                      // Camera button
+                      // Toggle Camera button
                       GestureDetector(
-                        onTap: () => _pickImage(ImageSource.camera),
+                        onTap: _toggleCamera,
                         child: Container(
                           width: 55,
                           height: 55,
@@ -340,7 +502,7 @@ class _ScanScreenState extends State<ScanScreen> {
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white30),
                           ),
-                          child: const Icon(LucideIcons.camera, color: Colors.white, size: 24),
+                          child: const Icon(LucideIcons.refreshCcw, color: Colors.white, size: 24),
                         ),
                       ),
                     ],

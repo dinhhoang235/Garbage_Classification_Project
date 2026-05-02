@@ -30,6 +30,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
   void initState() {
     super.initState();
     _loadHistory();
+    AppState().historyUpdateNotifier.addListener(_loadHistory);
+  }
+
+  @override
+  void dispose() {
+    AppState().historyUpdateNotifier.removeListener(_loadHistory);
+    super.dispose();
   }
 
   Future<void> _loadHistory() async {
@@ -99,7 +106,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
             icon: Icon(LucideIcons.filter, size: 20, color: theme.iconTheme.color),
           ),
         ],
-        backgroundColor: Colors.transparent,
+        backgroundColor: theme.scaffoldBackgroundColor,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
         elevation: 0,
       ),
       body: RefreshIndicator(
@@ -197,6 +206,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               points: '+${item.pointsEarned} điểm',
               icon: item.icon,
               color: item.color,
+              imageUrl: item.imageUrl,
               onTap: () async {
                 final result = await Navigator.push(
                   context,
@@ -226,7 +236,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       'date': item.formattedDate,
       'timestamp': item.createdAt,
       'location': item.location ?? '',
-      'image_url': item.imageUrl,
+      'imageUrl': item.imageUrl,
       'confidence': item.confidence,
     };
   }
@@ -311,33 +321,49 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Widget _buildFilterTabs(ThemeData theme) {
     final tabs = ['Tất cả', 'Tái chế', 'Hữu cơ', 'Nguy hại'];
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: tabs.map((label) {
+    return Container(
+      height: 50,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: tabs.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 10),
+        itemBuilder: (context, index) {
+          final label = tabs[index];
           final isSelected = _selectedFilter == label;
-          return ChoiceChip(
-            label: Text(label),
-            selected: isSelected,
-            onSelected: (val) {
-              if (val) setState(() => _selectedFilter = label);
-            },
-            selectedColor: AppColors.primary,
-            labelStyle: TextStyle(
-              color: isSelected ? Colors.white : theme.textTheme.bodyMedium?.color,
-              fontSize: 13,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          return GestureDetector(
+            onTap: () => setState(() => _selectedFilter = label),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.primary : theme.cardColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isSelected ? AppColors.primary : theme.dividerColor.withAlpha(50),
+                ),
+                boxShadow: isSelected ? [
+                  BoxShadow(
+                    color: AppColors.primary.withAlpha(60),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  )
+                ] : null,
+              ),
+              child: Center(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : theme.textTheme.bodyMedium?.color,
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  ),
+                ),
+              ),
             ),
-            backgroundColor: theme.cardColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-              side: BorderSide(
-                  color: isSelected ? AppColors.primary : theme.dividerColor.withAlpha(100)),
-            ),
-            showCheckmark: false,
           );
-        }).toList(),
+        },
       ),
     );
   }

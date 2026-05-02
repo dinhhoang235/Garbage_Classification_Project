@@ -71,26 +71,20 @@ class HistoryItemSkeleton extends StatelessWidget {
 
 class CategoryCardSkeleton extends StatelessWidget {
   const CategoryCardSkeleton({super.key});
-
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 140,
       margin: const EdgeInsets.only(right: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border.withAlpha(128)),
-      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Skeleton(height: 40, width: 40, borderRadius: 12),
-          const Spacer(),
-          const Skeleton(height: 16, width: 80),
-          const SizedBox(height: 4),
-          const Skeleton(height: 12, width: 60),
+          Skeleton(
+            height: 60,
+            width: 60,
+            borderRadius: 16,
+            color: Theme.of(context).disabledColor.withAlpha(20),
+          ),
+          const SizedBox(height: 8),
+          const Skeleton(height: 12, width: 50),
         ],
       ),
     );

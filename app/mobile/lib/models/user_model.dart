@@ -8,6 +8,23 @@ class User {
   final String levelName;
   final double xpProgress;
   final int achievementsCount;
+  
+  static const List<int> levelThresholds = [0, 200, 500, 1000, 1500, 2000, 3000, 5000, 8000, 12000];
+
+  int get totalXP {
+    if (level <= 0) return xpProgress.toInt();
+    return levelThresholds[level - 1] + xpProgress.toInt();
+  }
+
+  int get nextLevelTotalXP {
+    if (level >= levelThresholds.length) return levelThresholds.last + 5000;
+    return levelThresholds[level];
+  }
+
+  int get currentLevelMaxXP {
+    if (level >= levelThresholds.length) return 5000; // Cap for max level
+    return levelThresholds[level] - levelThresholds[level - 1];
+  }
 
   User({
     required this.id,
