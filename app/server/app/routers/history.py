@@ -39,6 +39,8 @@ def create_history_item(
         confidence=item_in.confidence,
         image_url=item_in.image_url,
         location=item_in.location,
+        latitude=item_in.latitude,
+        longitude=item_in.longitude,
         points_earned=item_in.points_earned
     )
     

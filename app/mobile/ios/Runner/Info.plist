@@ -72,5 +72,9 @@
 	<string>Ứng dụng cần truy cập thư viện ảnh để bạn có thể chọn ảnh rác đã chụp.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Ứng dụng cần truy cập micro (đi kèm camera).</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Ứng dụng cần truy cập vị trí của bạn để hiển thị các điểm thu gom rác gần nhất.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Ứng dụng cần truy cập vị trí của bạn để hiển thị các điểm thu gom rác gần nhất.</string>
 </dict>
 </plist>

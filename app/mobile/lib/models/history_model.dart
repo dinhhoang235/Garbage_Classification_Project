@@ -11,6 +11,8 @@ class HistoryItem {
   final double confidence;
   final String? imageUrl;
   final String? location;
+  final double? latitude;
+  final double? longitude;
   final int pointsEarned;
   final DateTime createdAt;
   final WasteCategory? category;
@@ -23,6 +25,8 @@ class HistoryItem {
     required this.confidence,
     this.imageUrl,
     this.location,
+    this.latitude,
+    this.longitude,
     required this.pointsEarned,
     required this.createdAt,
     this.category,
@@ -42,6 +46,8 @@ class HistoryItem {
       confidence: (json['confidence'] ?? 0.0).toDouble(),
       imageUrl: json['image_url'],
       location: json['location'],
+      latitude: json['latitude'] != null ? (json['latitude'] as num).toDouble() : null,
+      longitude: json['longitude'] != null ? (json['longitude'] as num).toDouble() : null,
       pointsEarned: json['points_earned'] ?? 0,
       createdAt: dateStr != null
           ? (DateTime.tryParse(dateStr)?.toLocal() ?? DateTime.now())
@@ -57,6 +63,8 @@ class HistoryItem {
       'confidence': confidence,
       'image_url': imageUrl,
       'location': location,
+      'latitude': latitude,
+      'longitude': longitude,
       'points_earned': pointsEarned,
     };
   }

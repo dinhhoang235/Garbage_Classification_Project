@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../core/theme/app_colors.dart';
 import '../core/state/app_state.dart';
@@ -22,6 +23,9 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  LatLng? _mapFocalPoint;
+  String? _mapLabel;
+  int _mapRequestId = 0;
   late List<Widget> _screens;
 
   @override
@@ -85,14 +89,30 @@ class _MainScreenState extends State<MainScreen> {
         },
       ),
       HistoryScreen(
-        onTabRequested: (index) {
+        onTabRequested: (int index, [dynamic data]) {
           setState(() {
             _selectedIndex = index;
+            if (data is Map<String, dynamic>) {
+              _mapFocalPoint = data['position'];
+              _mapLabel = data['label'];
+              _mapRequestId++;
+              _initScreens(); 
+            } else if (data is LatLng) {
+              _mapFocalPoint = data;
+              _mapLabel = null;
+              _mapRequestId++;
+              _initScreens(); 
+            }
           });
         },
       ),
       const SizedBox.shrink(), // Placeholder for Scan tab
-      const MapScreen(),
+      MapScreen(
+        initialCenter: _mapFocalPoint,
+        initialMarker: _mapFocalPoint,
+        initialLabel: _mapLabel,
+        mapRequestId: _mapRequestId,
+      ),
       ProfileScreen(
         currentUser: _currentUser,
         onLogin: _requestLogin,

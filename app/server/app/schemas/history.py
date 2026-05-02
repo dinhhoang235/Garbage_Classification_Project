@@ -10,6 +10,8 @@ class HistoryBase(BaseModel):
     confidence: float
     image_url: Optional[str] = None
     location: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     points_earned: Optional[int] = 0
 
 class HistoryCreate(HistoryBase):

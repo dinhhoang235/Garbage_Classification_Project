@@ -99,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // Add a timeout to prevent infinite loading if network is unstable
       final historyItems = await HistoryService()
           .getHistory(limit: 1)
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 15));
           
       if (mounted) {
         setState(() {

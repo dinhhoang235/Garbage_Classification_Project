@@ -8,6 +8,7 @@ import '../../core/services/user_service.dart';
 import '../../core/state/app_state.dart';
 import '../../models/predict_result_model.dart';
 import '../../models/history_model.dart';
+import '../../core/services/map_service.dart';
 
 class ResultScreen extends StatefulWidget {
   final PredictResult result;
@@ -44,6 +45,20 @@ class _ResultScreenState extends State<ResultScreen> {
     setState(() => _isSaving = true);
 
     try {
+      // Tự động lấy tọa độ hiện tại khi quét
+      double? lat;
+      double? lon;
+      String? address;
+      try {
+        final pos = await MapService().getCurrentPosition();
+        lat = pos.latitude;
+        lon = pos.longitude;
+        // Lấy địa chỉ từ tọa độ
+        address = await MapService().getAddressFromLatLng(lat, lon);
+      } catch (e) {
+        debugPrint('ResultScreen: Không thể lấy vị trí - $e');
+      }
+
       final historyItem = HistoryItem(
         id: 0,
         userId: 0,
@@ -51,6 +66,9 @@ class _ResultScreenState extends State<ResultScreen> {
         title: widget.result.displayName,
         confidence: widget.result.confidence,
         imageUrl: widget.result.imageUrl,
+        location: address,
+        latitude: lat,
+        longitude: lon,
         pointsEarned: widget.result.pointsEarned,
         createdAt: DateTime.now(),
       );

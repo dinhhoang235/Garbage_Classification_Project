@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../stats/stats_screen.dart';
 import '../../widgets/history_item_card.dart';
@@ -9,8 +10,10 @@ import '../../models/history_model.dart';
 import '../../widgets/skeleton.dart';
 import 'history_detail_screen.dart';
 
+typedef TabRequestCallback = void Function(int index, [dynamic data]);
+
 class HistoryScreen extends StatefulWidget {
-  final Function(int)? onTabRequested;
+  final TabRequestCallback? onTabRequested;
   const HistoryScreen({super.key, this.onTabRequested});
 
   @override
@@ -215,7 +218,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ),
                 );
                 if (result == 'go_to_map' && widget.onTabRequested != null) {
-                  widget.onTabRequested!(3);
+                  final lat = item.latitude;
+                  final lon = item.longitude;
+                  if (lat != null && lon != null) {
+                    widget.onTabRequested!(3, {
+                      'position': LatLng(lat, lon),
+                      'label': item.location ?? item.displayName,
+                    });
+                  } else {
+                    widget.onTabRequested!(3);
+                  }
                 }
               },
             ),
@@ -236,6 +248,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
       'date': item.formattedDate,
       'timestamp': item.createdAt,
       'location': item.location ?? '',
+      'latitude': item.latitude,
+      'longitude': item.longitude,
       'imageUrl': item.imageUrl,
       'confidence': item.confidence,
       'guide': item.category?.disposalGuide ?? 'Đối với loại rác này, bạn nên làm sạch trước khi bỏ vào thùng rác để tăng hiệu quả tái chế và tránh mùi hôi.',
