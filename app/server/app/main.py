@@ -13,8 +13,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.core.config import settings
 from app.core.database import engine, get_db, Base
 from app.core.storage import init_minio, upload_image_to_minio
-from app.core.seed import seed_categories
-from app.routers import auth, users, categories, history
+from app.core.seed import seed_categories, seed_notifications
+from app.routers import auth, users, categories, history, notifications
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -29,6 +29,7 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(categories.router)
 app.include_router(history.router)
+app.include_router(notifications.router)
 
 CLASS_NAMES = [
     "battery",
@@ -61,6 +62,7 @@ def startup_event() -> None:
     load_model()
     init_minio()
     seed_categories()
+    seed_notifications()
 
 
 def preprocess_image(image_bytes: bytes) -> np.ndarray:

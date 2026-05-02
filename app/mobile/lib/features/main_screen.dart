@@ -71,8 +71,8 @@ class _MainScreenState extends State<MainScreen> {
             );
           }
         },
-        onNotificationRequested: () {
-          showModalBottomSheet(
+        onNotificationRequested: () async {
+          await showModalBottomSheet(
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,

@@ -8,6 +8,9 @@ from app.models.user import User
 from app.models.history import History
 from app.schemas.history import History as HistorySchema, HistoryCreate
 
+from app.core.notifications import create_notification
+from app.services.achievement_service import AchievementService
+
 router = APIRouter(prefix="/history", tags=["history"])
 
 @router.get("", response_model=List[HistorySchema])
@@ -32,6 +35,8 @@ def create_history_item(
     """
     Create a new history item for the current user.
     """
+    old_level = current_user.level
+    
     history_item = History(
         user_id=current_user.id,
         category_id=item_in.category_id,
@@ -49,16 +54,12 @@ def create_history_item(
         current_user.points += item_in.points_earned
         
         # Synchronize with Mobile UI Level Thresholds
-        # L1: 0, L2: 200, L3: 500, L4: 1000, L5: 1500, L6: 2000, L7: 3000, L8: 5000, L9: 8000, L10: 12000
         LEVEL_THRESHOLDS = [0, 200, 500, 1000, 1500, 2000, 3000, 5000, 8000, 12000]
-        XP_PER_SCAN = 20 # 10 items = 200 XP (Level 2)
+        XP_PER_SCAN = 20
         
-        # Calculate new total XP from scratch based on scan history
-        # This fixes users who had incorrect high levels from legacy logic
         scan_count = db.query(History).filter(History.user_id == current_user.id).count()
         new_total_xp = (scan_count + 1) * XP_PER_SCAN
         
-        # Determine new level and relative progress
         new_level = 1
         for i, threshold in enumerate(LEVEL_THRESHOLDS):
             if new_total_xp >= threshold:
@@ -66,7 +67,6 @@ def create_history_item(
             else:
                 break
         
-        # Calculate xp_progress relative to the current level
         if new_level >= len(LEVEL_THRESHOLDS):
             current_user.xp_progress = float(new_total_xp - LEVEL_THRESHOLDS[-1])
             current_user.level = len(LEVEL_THRESHOLDS)
@@ -75,10 +75,23 @@ def create_history_item(
             current_user.xp_progress = float(new_total_xp - base_xp)
             current_user.level = new_level
 
+        # Check for Level Up Notification
+        if current_user.level > old_level:
+            create_notification(
+                db,
+                current_user.id,
+                "Lên cấp mới! 🚀",
+                f"Chúc mừng! Bạn đã đạt Level {current_user.level} - {current_user.level_name}. Hãy tiếp tục bảo vệ môi trường nhé!"
+            )
+
         db.commit()
         db.add(current_user)
         
     db.add(history_item)
     db.commit()
+    
+    # Check for new achievements
+    AchievementService.check_and_notify_achievements(db, current_user, item_in.category_id)
+    
     history_item = db.query(History).options(joinedload(History.category)).filter(History.id == history_item.id).first()
     return history_item

@@ -12,6 +12,7 @@ import '../../core/services/history_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/state/app_state.dart';
 import '../../widgets/skeleton.dart';
+import '../../core/services/notification_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final User? currentUser;
@@ -19,7 +20,7 @@ class HomeScreen extends StatefulWidget {
   final VoidCallback? onScanRequested;
   final VoidCallback? onHistoryRequested;
   final Function(String)? onCategoryRequested;
-  final VoidCallback? onNotificationRequested;
+  final Future<void> Function()? onNotificationRequested;
   final VoidCallback? onAchievementsRequested;
 
   const HomeScreen({
@@ -40,10 +41,9 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<WasteCategory> _categories = [];
   HistoryItem? _latestHistoryItem;
+  int _unreadCount = 0;
   bool _isLoadingCategories = true;
   bool _isLoadingHistory = true;
-
-
 
   @override
   void initState() {
@@ -56,6 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _loadCategories(),
       _loadLatestHistory(),
       _refreshProfile(),
+      _loadUnreadCount(),
     ]);
   }
 
@@ -68,6 +69,18 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (e) {
       debugPrint('HomeScreen._refreshProfile error: $e');
+    }
+  }
+
+  Future<void> _loadUnreadCount() async {
+    if (!isLoggedIn) return;
+    try {
+      final count = await NotificationService().getUnreadCount();
+      if (mounted) {
+        setState(() => _unreadCount = count);
+      }
+    } catch (e) {
+      debugPrint('HomeScreen._loadUnreadCount error: $e');
     }
   }
 
@@ -96,7 +109,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) setState(() => _isLoadingHistory = true);
     
     try {
-      // Add a timeout to prevent infinite loading if network is unstable
       final historyItems = await HistoryService()
           .getHistory(limit: 1)
           .timeout(const Duration(seconds: 15));
@@ -121,9 +133,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void didUpdateWidget(HomeScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Reload when user logs in/out
     if (oldWidget.currentUser != widget.currentUser) {
       _loadLatestHistory();
+      _loadUnreadCount();
     }
   }
 
@@ -222,15 +234,50 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         GestureDetector(
-          onTap: widget.onNotificationRequested,
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: theme.cardColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: theme.dividerColor),
-            ),
-            child: Icon(LucideIcons.bell, size: 20, color: theme.iconTheme.color),
+          onTap: () async {
+            if (widget.onNotificationRequested != null) {
+              await widget.onNotificationRequested!();
+              _loadUnreadCount();
+            }
+          },
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: theme.dividerColor),
+                ),
+                child: Icon(LucideIcons.bell, size: 20, color: theme.iconTheme.color),
+              ),
+              if (isLoggedIn && _unreadCount > 0)
+                Positioned(
+                  top: -5,
+                  right: -5,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: AppColors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      _unreadCount > 9 ? '9+' : '$_unreadCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ],

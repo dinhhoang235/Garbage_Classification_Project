@@ -1,6 +1,7 @@
-from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.category import WasteCategory
+from app.models.notification import Notification
+from app.models.user import User
 
 def seed_categories():
     db = next(get_db())
@@ -115,6 +116,40 @@ def seed_categories():
         db.commit()
     except Exception as e:
         print(f"Error seeding categories: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+def seed_notifications():
+    db = next(get_db())
+    try:
+        users = db.query(User).all()
+        for user in users:
+            # Check if welcome notification already exists
+            existing = db.query(Notification).filter(
+                Notification.user_id == user.id,
+                Notification.title == "Chào mừng bạn đến với Eco Sort"
+            ).first()
+            
+            if not existing:
+                welcome_notif = Notification(
+                    user_id=user.id,
+                    title="Chào mừng bạn đến với Eco Sort",
+                    content="Cảm ơn bạn đã tham gia cùng chúng tôi trong việc bảo vệ môi trường. Hãy bắt đầu phân loại rác ngay hôm nay!",
+                    is_read=False
+                )
+                db.add(welcome_notif)
+                
+                level_notif = Notification(
+                    user_id=user.id,
+                    title="Mẹo nhỏ cho bạn",
+                    content="Bạn có biết phân loại rác đúng cách giúp tiết kiệm 70% năng lượng tái chế không?",
+                    is_read=False
+                )
+                db.add(level_notif)
+        db.commit()
+    except Exception as e:
+        print(f"Error seeding notifications: {e}")
         db.rollback()
     finally:
         db.close()
