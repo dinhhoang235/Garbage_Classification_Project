@@ -29,3 +29,7 @@ class UserInDBBase(UserBase):
 
 class User(UserInDBBase):
     pass
+
+class UserPasswordChange(BaseModel):
+    old_password: str
+    new_password: str

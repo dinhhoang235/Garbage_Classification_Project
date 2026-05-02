@@ -36,6 +36,39 @@ class UserService {
     return [];
   }
 
+  Future<String?> changePassword(String oldPassword, String newPassword) async {
+    try {
+      final response = await _apiClient.dio.post(
+        ApiConstants.changePassword,
+        data: {
+          'old_password': oldPassword,
+          'new_password': newPassword,
+        },
+      );
+      if (response.statusCode == 200) {
+        return null; // Thành công
+      }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 400) {
+        return e.response?.data['detail'] ?? 'Mật khẩu cũ không chính xác';
+      }
+      return 'Lỗi kết nối server';
+    } catch (e) {
+      return 'Đã xảy ra lỗi ngoài ý muốn';
+    }
+    return 'Lỗi không xác định';
+  }
+
+  Future<bool> deleteAccount() async {
+    try {
+      final response = await _apiClient.dio.delete(ApiConstants.getProfile);
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('UserService.deleteAccount error: $e');
+      return false;
+    }
+  }
+
   Future<User?> updateProfile({String? name, String? avatarUrl}) async {
     try {
       final data = <String, dynamic>{};

@@ -5,8 +5,9 @@ from typing import Any, List
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.storage import generate_avatar_presigned_url
+from app.core.auth import verify_password, get_password_hash
 from app.models.user import User
-from app.schemas.user import User as UserSchema, UserUpdate
+from app.schemas.user import User as UserSchema, UserUpdate, UserPasswordChange
 from app.schemas.achievement import Achievement
 from app.services.achievement_service import AchievementService
 
@@ -69,4 +70,40 @@ def update_user_me(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+@router.post("/me/change-password")
+def change_password_me(
+    pass_in: UserPasswordChange,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Change current user password.
+    """
+    if not verify_password(pass_in.old_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Mật khẩu cũ không chính xác")
+    
+    current_user.hashed_password = get_password_hash(pass_in.new_password)
+    db.add(current_user)
+    db.commit()
+    return {"message": "Đổi mật khẩu thành công"}
+
+@router.delete("/me")
+def delete_user_me(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Delete current user account and all associated data.
+    """
+    from app.models.history import History
+    
+    # 1. Delete user's history records
+    db.query(History).filter(History.user_id == current_user.id).delete()
+    
+    # 2. Delete the user
+    db.delete(current_user)
+    db.commit()
+    
+    return {"message": "Tài khoản đã được xóa thành công"}
 

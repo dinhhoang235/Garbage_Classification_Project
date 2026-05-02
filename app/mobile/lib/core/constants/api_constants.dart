@@ -13,6 +13,7 @@ class ApiConstants {
 
   // User endpoints
   static const String getProfile = '/users/me';
+  static const String changePassword = '/users/me/change-password';
   static const String avatarUploadUrl = '/users/me/avatar-upload-url';
   static const String achievements = '/users/me/achievements';
 
