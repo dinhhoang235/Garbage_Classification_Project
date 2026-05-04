@@ -82,6 +82,48 @@ def _validate_data_dir(base_dir):
     return len(class_dirs)
 
 
+def _write_train_report(report_path, run_kwargs, metrics):
+    report_file = Path(report_path)
+    report_file.parent.mkdir(parents=True, exist_ok=True)
+    img_size = run_kwargs.get("img_size", (224, 224))
+    report_lines = [
+        "Training report",
+        "================",
+        f"Base dir: {run_kwargs.get('base_dir')}",
+        f"Architecture: {run_kwargs.get('architecture')}",
+        f"Image size: {img_size[0]} x {img_size[1]}",
+        f"Batch size: {run_kwargs.get('batch_size')}",
+        f"Epochs: {run_kwargs.get('epochs')}",
+        f"Learning rate: {run_kwargs.get('learning_rate')}",
+        f"Optimizer: {run_kwargs.get('optimizer_name')}",
+        f"Dropout rate: {run_kwargs.get('dropout_rate')}",
+        f"Weight decay: {run_kwargs.get('weight_decay')}",
+        f"Fine-tune layers: {run_kwargs.get('fine_tune_layers')}",
+        f"Mixed precision: {run_kwargs.get('mixed_precision')}",
+        f"Balance strategy: {run_kwargs.get('balance_strategy')}",
+        f"Trainable base: {run_kwargs.get('trainable')}",
+        f"Model saved to: {metrics.get('checkpoint_path', '')}",
+        f"Training history CSV: {run_kwargs.get('history_path')}",
+        f"Metrics summary JSON: {run_kwargs.get('metrics_path')}",
+        f"Classification report: {run_kwargs.get('classification_report_path')}",
+        f"TensorBoard log dir: {run_kwargs.get('tensorboard_log_dir')}",
+    ]
+
+    if metrics:
+        report_lines.extend(
+            [
+                "",
+                "Final test metrics:",
+                f"  test_loss = {metrics.get('test_loss', float('nan')):.4f}",
+                f"  test_accuracy = {metrics.get('test_accuracy', float('nan')):.4f}",
+                f"  test_f1_macro = {metrics.get('test_f1_macro', float('nan')):.4f}",
+                f"  params_count = {metrics.get('params_count', 0)}",
+            ]
+        )
+
+    report_file.write_text("\n".join(report_lines) + "\n", encoding="utf-8")
+
+
 def main():
     args = parse_args()
     config_paths = _resolve_config_paths(args.configs)
@@ -97,12 +139,14 @@ def main():
     for i, config_path in enumerate(config_paths, 1):
         print(f"\n{'='*60}")
         print(f"Experiment {i}/{len(config_paths)}")
+        experiment_name = Path(config_path).stem
         
         try:
             config = _load_yaml_config(config_path)
             experiment_name = config.get("experiment_name") or Path(config_path).stem
             output_dir = Path(config.get("output_dir", f"runs/{experiment_name}"))
             output_dir.mkdir(parents=True, exist_ok=True)
+            report_path = str(output_dir / "train_report.txt")
 
             base_dir = config.get("base_dir", "data/raw/original")
             print(f"Config: {Path(config_path).name}")
@@ -136,12 +180,12 @@ def main():
                 "metrics_path": str(output_dir / "metrics_summary.json"),
                 "classification_report_path": str(output_dir / "classification_report.txt"),
                 "tensorboard_log_dir": str(output_dir / "tensorboard"),
-                "report_path": str(output_dir / "train_report.txt"),
             }
 
             print("Starting training...")
             result = run_training_pipeline(**run_kwargs)
             metrics = result.get("metrics_summary", {})
+            _write_train_report(report_path, run_kwargs, metrics)
 
             row = {
                 "experiment_name": experiment_name,
@@ -154,6 +198,7 @@ def main():
             interim_df = pd.DataFrame(results)
             interim_df.to_csv(results_path, index=False)
             print(f"✓ Training completed. Results saved to {results_path}")
+            print(f"✓ Training report saved to {report_path}")
             
         except Exception as exc:
             print(f"✗ Error running {experiment_name}: {exc}")
