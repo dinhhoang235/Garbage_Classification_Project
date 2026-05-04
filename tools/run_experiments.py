@@ -75,16 +75,28 @@ def parse_args():
 
 
 def _validate_data_dir(base_dir):
-    """Validate that data directory exists and has class folders."""
+    """Validate data dir and report class count.
+
+    Supports two layouts:
+    1) pre-split: base_dir/train|val|test/<class_name>
+    2) flat:      base_dir/<class_name>
+    """
     data_path = Path(base_dir)
     if not data_path.exists():
         raise FileNotFoundError(f"Data directory not found: {base_dir}")
-    
-    class_dirs = [d for d in data_path.iterdir() if d.is_dir()]
+
+    train_path = data_path / "train"
+    if train_path.exists() and train_path.is_dir():
+        class_dirs = [d for d in train_path.iterdir() if d.is_dir()]
+        checked_path = train_path
+    else:
+        class_dirs = [d for d in data_path.iterdir() if d.is_dir()]
+        checked_path = data_path
+
     if not class_dirs:
-        raise RuntimeError(f"No class folders found in {base_dir}. Found: {list(data_path.iterdir())}")
-    
-    print(f"  ✓ Data directory valid: {len(class_dirs)} classes found")
+        raise RuntimeError(f"No class folders found in {checked_path}. Found: {list(checked_path.iterdir())}")
+
+    print(f"  ✓ Data directory valid: {len(class_dirs)} classes found (from {checked_path})")
     return len(class_dirs)
 
 
