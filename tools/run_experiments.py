@@ -142,9 +142,12 @@ def main():
     results_path = Path(args.results_path)
     results_path.parent.mkdir(parents=True, exist_ok=True)
 
+    total_experiments = len(config_paths)
     for i, config_path in enumerate(config_paths, 1):
+        progress_pct = int(((i - 1) / total_experiments) * 100)
         print(f"\n{'='*60}")
-        print(f"Experiment {i}/{len(config_paths)}")
+        print(f"Progress: {progress_pct}%")
+        print(f"Experiment {i}/{total_experiments}")
         experiment_name = Path(config_path).stem
         
         try:
@@ -203,8 +206,10 @@ def main():
 
             interim_df = pd.DataFrame(results)
             interim_df.to_csv(results_path, index=False)
+            done_pct = int((i / total_experiments) * 100)
             print(f"✓ Training completed. Results saved to {results_path}")
             print(f"✓ Training report saved to {report_path}")
+            print(f"✓ Overall progress: {done_pct}%")
             
         except Exception as exc:
             print(f"✗ Error running {experiment_name}: {exc}")
