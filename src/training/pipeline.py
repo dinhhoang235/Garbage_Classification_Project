@@ -9,6 +9,16 @@ from sklearn.metrics import classification_report, f1_score
 
 from preprocessing.generators import custom_preprocess_input, get_data_generators
 
+# GPU Optimization
+try:
+    gpus = tf.config.list_physical_devices('GPU')
+    if gpus:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        tf.config.experimental.enable_tensor_float_32_execution(False)
+except Exception:
+    pass
+
 
 def _enable_mixed_precision(mixed_precision_mode):
     if not mixed_precision_mode:
