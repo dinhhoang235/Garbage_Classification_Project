@@ -1,3 +1,4 @@
+from pathlib import Path
 import pandas as pd
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
@@ -8,6 +9,41 @@ from .splitter import split_dataframe
 def custom_preprocess_input(image_array):
     """Tien xu ly tu viet: chuyen sang float32 va normalize ve [0, 1]."""
     return image_array.astype("float32") / 255.0
+
+
+def _is_preprocessed_structure(base_dir):
+    """Check if base_dir has pre-split structure: train/, val/, test/ subfolders."""
+    base_path = Path(base_dir)
+    if not base_path.exists():
+        return False
+    required_splits = {"train", "val", "test"}
+    existing_splits = {d.name for d in base_path.iterdir() if d.is_dir()}
+    return required_splits.issubset(existing_splits)
+
+
+def _build_dataframe_from_split(split_dir, split_name="train"):
+    """Build a dataframe by scanning split_dir/<label>/ structure."""
+    from .dataset_io import VALID_EXTENSIONS, is_valid_image
+    
+    split_path = Path(split_dir)
+    if not split_path.exists():
+        raise FileNotFoundError(f"Split directory not found: {split_dir}")
+    
+    records = []
+    class_dirs = sorted([d for d in split_path.iterdir() if d.is_dir()])
+    
+    for class_dir in class_dirs:
+        label = class_dir.name
+        for image_path in class_dir.rglob("*"):
+            if not image_path.is_file() or image_path.suffix.lower() not in VALID_EXTENSIONS:
+                continue
+            if is_valid_image(image_path):
+                records.append({"filepath": str(image_path), "label": label})
+    
+    if not records:
+        raise ValueError(f"No valid images found in {split_dir}")
+    
+    return pd.DataFrame(records)
 
 
 def _oversample_train_dataframe(train_df, random_state=42):
@@ -63,19 +99,30 @@ def get_data_generators(
 ):
     """Tien xu ly du lieu anh va tao 3 generator: train/validation/test.
 
+    If base_dir has pre-split structure (train/, val/, test/ subfolders), loads from there.
+    Otherwise, scans base_dir as root with class subfolders and performs stratified split.
+
     balance_strategy:
         - "none": khong can bang
         - "oversample": oversample cac lop it mau trong train
         - "class_weight": giu nguyen train va tinh class weight (gan vao train_gen.class_weight)
     """
-    samples_df, _ = build_samples_dataframe(base_dir, remove_invalid=remove_invalid)
-    train_df, val_df, test_df = split_dataframe(
-        samples_df,
-        train_ratio=train_ratio,
-        val_ratio=val_ratio,
-        test_ratio=test_ratio,
-        random_state=random_state,
-    )
+    # Check if base_dir is pre-split (has train/, val/, test/)
+    if _is_preprocessed_structure(base_dir):
+        base_path = Path(base_dir)
+        train_df = _build_dataframe_from_split(str(base_path / "train"), "train")
+        val_df = _build_dataframe_from_split(str(base_path / "val"), "val")
+        test_df = _build_dataframe_from_split(str(base_path / "test"), "test")
+    else:
+        # Original behavior: scan base_dir and perform stratified split
+        samples_df, _ = build_samples_dataframe(base_dir, remove_invalid=remove_invalid)
+        train_df, val_df, test_df = split_dataframe(
+            samples_df,
+            train_ratio=train_ratio,
+            val_ratio=val_ratio,
+            test_ratio=test_ratio,
+            random_state=random_state,
+        )
 
     original_train_df = train_df
     if balance_strategy == "oversample":

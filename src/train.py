@@ -5,11 +5,23 @@ from pathlib import Path
 from training.pipeline import run_training_pipeline
 
 
+def _get_default_base_dir():
+    """Autodetect: if data/processed exists with train/val/test, use it; else use data/raw/original."""
+    processed_path = Path("data/processed")
+    if processed_path.exists() and all(
+        (processed_path / split).exists() for split in ["train", "val", "test"]
+    ):
+        return str(processed_path)
+    return "data/raw/original"
+
+
 def parse_args():
     """Định nghĩa các tham số dòng lệnh cho script train."""
+    default_base_dir = _get_default_base_dir()
+    
     parser = argparse.ArgumentParser(description="Train garbage classification models")
     parser.add_argument("--config", type=str, default=None, help="Path to a YAML/JSON config file")
-    parser.add_argument("--base_dir", type=str, default="data/raw/original", help="Root image folder with class subfolders")
+    parser.add_argument("--base_dir", type=str, default=default_base_dir, help="Root image folder with class subfolders or pre-split data/processed structure")
     parser.add_argument("--img_size", type=int, nargs=2, default=[224, 224], help="Image size for training")
     parser.add_argument("--batch_size", type=int, default=32, help="Batch size")
     parser.add_argument("--epochs", type=int, default=10, help="Number of epochs")
@@ -89,6 +101,7 @@ def main():
 
     train_ratio = 1.0 - validation_split - test_split
 
+    print(f"Using base_dir: {base_dir}")
     print("Running training pipeline...")
     result = run_training_pipeline(
         base_dir=base_dir,
