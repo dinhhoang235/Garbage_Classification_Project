@@ -2,7 +2,7 @@ experiment_name: mobilenetv1_baseline
 base_dir: data/processed
 architecture: MobileNetV1
 img_size: [224, 224]
-batch_size: 128
+batch_size: 256
 epochs: 30
 learning_rate: 0.0002
 optimizer: Adam
