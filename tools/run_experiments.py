@@ -65,6 +65,12 @@ def parse_args():
         default="experiments/results_summary.csv",
         help="CSV file to append summary results",
     )
+    parser.add_argument(
+        "--base_dir",
+        type=str,
+        default=None,
+        help="Override base data directory for all experiments",
+    )
     return parser.parse_args()
 
 
@@ -148,7 +154,7 @@ def main():
             output_dir.mkdir(parents=True, exist_ok=True)
             report_path = str(output_dir / "train_report.txt")
 
-            base_dir = config.get("base_dir", "data/raw/original")
+            base_dir = args.base_dir or config.get("base_dir", "data/raw/original")
             print(f"Config: {Path(config_path).name}")
             print(f"Experiment: {experiment_name}")
             print(f"Architecture: {config.get('architecture', 'MobileNetV1')}")
