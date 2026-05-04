@@ -242,6 +242,6 @@ python src/evaluate.py --model_path model/weights/mobilenet_baseline_best.keras 
 
 Kết quả đánh giá sẽ in ra `loss`, `accuracy`, `classification report` và lưu `confusion matrix` tại `reports/confusion_matrix.png`.
 
-## Hướng dẫn chạy experiments (tổng hợp)
+## Hướng dẫn chạy experiments ở notebooks dùng colab training
 
 Xem hướng dẫn đầy đủ tại [experiments/EXPERIMENTS_GUIDE.md](experiments/EXPERIMENTS_GUIDE.md).
