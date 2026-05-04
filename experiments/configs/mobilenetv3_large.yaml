@@ -1,0 +1,18 @@
+experiment_name: mobilenetv3_large
+base_dir: data/raw/original
+architecture: MobileNetV3Large
+img_size: [224, 224]
+batch_size: 16
+epochs: 30
+learning_rate: 0.0001
+optimizer: Adam
+dropout_rate: 0.3
+weight_decay: 0.0001
+fine_tune_layers: 0
+mixed_precision: true
+trainable: false
+balance_strategy: oversample
+validation_split: 0.15
+test_split: 0.15
+random_state: 42
+output_dir: runs/mobilenetv3_large

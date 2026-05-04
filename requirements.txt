@@ -10,6 +10,7 @@ Pillow
 # Deep Learning (Core)
 tensorflow>=2.10.0  # Chứa MobileNet và các công cụ huấn luyện
 keras
+PyYAML
 
 # Thu thập và quản lý dữ liệu
 kaggle              # Dùng để tải dataset tự động từ Kaggle

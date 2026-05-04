@@ -5,6 +5,11 @@ from .dataset_io import build_samples_dataframe
 from .splitter import split_dataframe
 
 
+def custom_preprocess_input(image_array):
+    """Tien xu ly tu viet: chuyen sang float32 va normalize ve [0, 1]."""
+    return image_array.astype("float32") / 255.0
+
+
 def _oversample_train_dataframe(train_df, random_state=42):
     """Oversample minority classes in train_df to match the majority class size."""
     if train_df.empty:
@@ -54,6 +59,7 @@ def get_data_generators(
     random_state=42,
     remove_invalid=False,
     balance_strategy="oversample",
+    preprocessing_function=custom_preprocess_input,
 ):
     """Tien xu ly du lieu anh va tao 3 generator: train/validation/test.
 
@@ -77,8 +83,9 @@ def get_data_generators(
     elif balance_strategy not in {"none", "class_weight"}:
         raise ValueError("balance_strategy must be one of: none, oversample, class_weight")
 
+    datagen_kwargs = {"preprocessing_function": preprocessing_function}
+
     train_datagen = ImageDataGenerator(
-        rescale=1.0 / 255,
         rotation_range=30,
         width_shift_range=0.2,
         height_shift_range=0.2,
@@ -86,8 +93,9 @@ def get_data_generators(
         zoom_range=0.2,
         horizontal_flip=True,
         fill_mode="nearest",
+        **datagen_kwargs,
     )
-    eval_datagen = ImageDataGenerator(rescale=1.0 / 255)
+    eval_datagen = ImageDataGenerator(**datagen_kwargs)
 
     train_gen = train_datagen.flow_from_dataframe(
         dataframe=train_df,
