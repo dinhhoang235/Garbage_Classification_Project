@@ -1,5 +1,6 @@
 import argparse
 import json
+import shutil
 from pathlib import Path
 
 from training.pipeline import run_training_pipeline
@@ -139,6 +140,15 @@ def main():
         if history.history.get("val_loss"):
             print(f"  val_loss  = {history.history['val_loss'][0]:.4f}")
             print(f"  val_acc   = {history.history['val_accuracy'][0]:.4f}")
+
+    # Copy checkpoint về model/weights/ để tiện evaluate
+    default_weights_dir = Path("model/weights")
+    default_weights_dir.mkdir(parents=True, exist_ok=True)
+    checkpoint_src = Path(checkpoint_path)
+    checkpoint_dst = default_weights_dir / checkpoint_src.name
+    if checkpoint_src.exists() and checkpoint_src.resolve() != checkpoint_dst.resolve():
+        shutil.copy2(checkpoint_src, checkpoint_dst)
+        print(f"Checkpoint also copied to: {checkpoint_dst}")
 
     print("Training complete.")
     print(f"Best model saved to: {checkpoint_path}")
