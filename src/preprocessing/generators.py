@@ -95,7 +95,7 @@ def get_data_generators(
     random_state=42,
     remove_invalid=False,
     balance_strategy="oversample",
-    preprocessing_function=custom_preprocess_input,
+    preprocessing_function=None,
 ):
     """Tien xu ly du lieu anh va tao 3 generator: train/validation/test.
 
@@ -106,7 +106,14 @@ def get_data_generators(
         - "none": khong can bang
         - "oversample": oversample cac lop it mau trong train
         - "class_weight": giu nguyen train va tinh class weight (gan vao train_gen.class_weight)
+
+    preprocessing_function:
+        - None (default): dung custom_preprocess_input ([0,1] normalization) cho MobileNetV1
+        - Truyen backbone preprocess_input cu the (vd: mobilenet_v3.preprocess_input)
+          neu backbone co internal preprocessing layers de tranh double-normalize
     """
+    if preprocessing_function is None:
+        preprocessing_function = custom_preprocess_input
     # Check if base_dir is pre-split (has train/, val/, test/)
     if _is_preprocessed_structure(base_dir):
         base_path = Path(base_dir)

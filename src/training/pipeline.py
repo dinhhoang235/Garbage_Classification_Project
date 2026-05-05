@@ -7,7 +7,7 @@ import tensorflow as tf
 from tensorflow.keras import layers, models, optimizers, callbacks
 from sklearn.metrics import classification_report, f1_score
 
-from preprocessing.generators import custom_preprocess_input, get_data_generators
+from preprocessing.generators import get_data_generators
 
 # GPU Optimization
 try:
@@ -42,6 +42,7 @@ def _get_backbone_spec(architecture):
         return {
             "name": "mobilenet_v1",
             "builder": tf.keras.applications.MobileNet,
+            # MobileNetV1 expects [-1, 1] — dùng preprocess_input gốc của nó
             "preprocess_input": tf.keras.applications.mobilenet.preprocess_input,
         }
 
@@ -49,6 +50,8 @@ def _get_backbone_spec(architecture):
         return {
             "name": "mobilenet_v3_large",
             "builder": tf.keras.applications.MobileNetV3Large,
+            # MobileNetV3 có internal Rescaling layer bên trong model —
+            # KHÔNG /255 bên ngoài, chỉ dùng preprocess_input gốc (nhận [0,255])
             "preprocess_input": tf.keras.applications.mobilenet_v3.preprocess_input,
         }
 
@@ -56,6 +59,7 @@ def _get_backbone_spec(architecture):
         return {
             "name": "efficientnet_v2_s",
             "builder": tf.keras.applications.EfficientNetV2S,
+            # EfficientNetV2 cũng có internal normalization — nhận [0,255]
             "preprocess_input": tf.keras.applications.efficientnet_v2.preprocess_input,
         }
 
@@ -152,13 +156,18 @@ def run_training_pipeline(
     """Chạy toàn bộ pipeline huấn luyện: tải dữ liệu, xây model, train và lưu model."""
     img_size = tuple(img_size)
     input_shape = img_size + (3,)
+
+    # Lấy backbone spec để biết đúng preprocessing function cần dùng
     backbone_spec = _get_backbone_spec(architecture)
+    # KEY FIX: mỗi backbone có preprocess_input riêng, KHÔNG hardcode /255
+    backbone_preprocess_fn = backbone_spec["preprocess_input"]
+
     metrics_path = Path(metrics_path)
     classification_report_path = Path(classification_report_path)
     start_time = time.perf_counter()
     precision_policy = _enable_mixed_precision(mixed_precision)
 
-    # Tạo generator train/val/test từ pipeline tiền xử lý
+    # Tạo generator train/val/test với đúng preprocessing của backbone
     train_gen, val_gen, test_gen = get_data_generators(
         base_dir=base_dir,
         img_size=img_size,
@@ -168,7 +177,7 @@ def run_training_pipeline(
         test_ratio=test_ratio,
         random_state=random_state,
         balance_strategy=balance_strategy,
-        preprocessing_function=custom_preprocess_input,
+        preprocessing_function=backbone_preprocess_fn,  # FIX: đúng fn cho từng backbone
     )
 
     num_classes = len(train_gen.class_indices)
@@ -181,19 +190,16 @@ def run_training_pipeline(
         dropout_rate=dropout_rate,
         weight_decay=weight_decay,
     )
-    # Compile model với hàm mất mát categorical_crossentropy và metric accuracy
     model.compile(
         optimizer=_build_optimizer(optimizer_name, learning_rate),
         loss="categorical_crossentropy",
         metrics=["accuracy"],
     )
 
-    # Tạo thư mục lưu model và lịch sử nếu chưa tồn tại
     model_dir_path = Path(model_dir)
     model_dir_path.mkdir(parents=True, exist_ok=True)
     checkpoint_path = model_dir_path / f"{backbone_spec['name']}_best.keras"
 
-    # Các callback hỗ trợ training tốt hơn
     callback_list = [
         callbacks.ModelCheckpoint(
             filepath=str(checkpoint_path),
@@ -218,7 +224,6 @@ def run_training_pipeline(
             )
         )
 
-    # Huấn luyện model
     history = model.fit(
         train_gen,
         epochs=epochs,
@@ -228,10 +233,8 @@ def run_training_pipeline(
         verbose=1,
     )
 
-    # Lưu model tốt nhất vào đường dẫn checkpoint
     model.save(checkpoint_path)
 
-    # Đánh giá trên test set bằng cùng preprocessing để tạo kết quả so sánh
     test_gen.reset()
     test_loss, test_accuracy = model.evaluate(test_gen, verbose=1)
     test_gen.reset()
@@ -247,7 +250,7 @@ def run_training_pipeline(
     best_val_loss = float(min(history.history["val_loss"])) if history.history.get("val_loss") else None
 
     metrics_summary = {
-        "architecture": _get_backbone_spec(architecture)["name"],
+        "architecture": backbone_spec["name"],
         "base_dir": base_dir,
         "img_size": list(img_size),
         "batch_size": batch_size,
