@@ -23,6 +23,7 @@ class RefreshTokenRequest(BaseModel):
 from app.models.user import User
 from app.schemas.token import Token
 from app.schemas.user import UserCreate, User as UserSchema
+from app.core.storage import build_public_image_url, normalize_public_image_reference
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -38,12 +39,14 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
         name=user_in.name,
         phone_number=user_in.phone_number,
         hashed_password=get_password_hash(user_in.password),
-        avatar_url=user_in.avatar_url,
+        avatar_url=normalize_public_image_reference(user_in.avatar_url),
     )
     db.add(user)
     db.commit()
     db.refresh(user)
-    return user
+    payload = UserSchema.model_validate(user)
+    payload.avatar_url = build_public_image_url(user.avatar_url)
+    return payload
 
 @router.post("/login", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):

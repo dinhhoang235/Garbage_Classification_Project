@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 from app.schemas.category import Category
@@ -23,5 +23,4 @@ class History(HistoryBase):
     created_at: datetime
     category: Optional[Category] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

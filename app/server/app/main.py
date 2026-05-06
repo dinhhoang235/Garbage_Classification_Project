@@ -12,7 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import settings
 from app.core.database import engine, get_db, Base
-from app.core.storage import init_minio, upload_image_to_minio
+from app.core.storage import build_public_image_url, init_minio, upload_image_to_minio
 from app.core.seed import seed_categories, seed_notifications
 from app.routers import auth, users, categories, history, notifications
 
@@ -121,7 +121,8 @@ async def predict(file: UploadFile = File(...), db=Depends(get_db)) -> JSONRespo
         raise HTTPException(status_code=400, detail=str(exc))
 
     # Upload to MinIO
-    image_url = upload_image_to_minio(image_bytes, file.content_type)
+    image_ref = upload_image_to_minio(image_bytes, file.content_type)
+    image_url = build_public_image_url(image_ref)
 
     predictions = load_model().predict(data)
     if predictions.ndim == 2:

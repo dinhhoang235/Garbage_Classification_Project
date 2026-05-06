@@ -7,11 +7,18 @@ from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.models.history import History
 from app.schemas.history import History as HistorySchema, HistoryCreate
+from app.core.storage import build_public_image_url, normalize_public_image_reference
 
 from app.core.notifications import create_notification
 from app.services.achievement_service import AchievementService
 
 router = APIRouter(prefix="/history", tags=["history"])
+
+
+def _to_history_schema(item: History) -> HistorySchema:
+    payload = HistorySchema.model_validate(item)
+    payload.image_url = build_public_image_url(item.image_url)
+    return payload
 
 @router.get("", response_model=List[HistorySchema])
 def read_history(
@@ -24,7 +31,7 @@ def read_history(
     Retrieve classification history for the current user.
     """
     history_items = db.query(History).options(joinedload(History.category)).filter(History.user_id == current_user.id).order_by(History.created_at.desc()).offset(skip).limit(limit).all()
-    return history_items
+    return [_to_history_schema(item) for item in history_items]
 
 @router.post("", response_model=HistorySchema)
 def create_history_item(
@@ -42,7 +49,7 @@ def create_history_item(
         category_id=item_in.category_id,
         title=item_in.title,
         confidence=item_in.confidence,
-        image_url=item_in.image_url,
+        image_url=normalize_public_image_reference(item_in.image_url),
         location=item_in.location,
         latitude=item_in.latitude,
         longitude=item_in.longitude,
@@ -94,4 +101,4 @@ def create_history_item(
     AchievementService.check_and_notify_achievements(db, current_user, item_in.category_id)
     
     history_item = db.query(History).options(joinedload(History.category)).filter(History.id == history_item.id).first()
-    return history_item
+    return _to_history_schema(history_item)

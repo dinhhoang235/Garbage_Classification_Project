@@ -1,10 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import Any, List
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.core.storage import generate_avatar_presigned_url
+from app.core.storage import (
+    build_public_image_url,
+    generate_avatar_presigned_url,
+    normalize_public_image_reference,
+)
 from app.core.auth import verify_password, get_password_hash
 from app.models.user import User
 from app.schemas.user import User as UserSchema, UserUpdate, UserPasswordChange
@@ -13,12 +17,18 @@ from app.services.achievement_service import AchievementService
 
 router = APIRouter(prefix="/users", tags=["users"])
 
+
+def _to_user_schema(user: User) -> UserSchema:
+    payload = UserSchema.model_validate(user)
+    payload.avatar_url = build_public_image_url(user.avatar_url)
+    return payload
+
 @router.get("/me", response_model=UserSchema)
 def read_user_me(current_user: User = Depends(get_current_user)) -> Any:
     """
     Get current user.
     """
-    return current_user
+    return _to_user_schema(current_user)
 
 @router.get("/me/achievements", response_model=List[Achievement])
 def read_user_achievements(
@@ -33,6 +43,7 @@ def read_user_achievements(
 
 @router.get("/me/avatar-upload-url")
 def get_avatar_upload_url(
+    request: Request,
     content_type: str = Query(default="image/jpeg", description="MIME type of the image, e.g. image/jpeg or image/png"),
     current_user: User = Depends(get_current_user),
 ) -> Any:
@@ -47,7 +58,11 @@ def get_avatar_upload_url(
       3. Client calls PUT /users/me with { avatar_url: public_url } to persist
     """
     try:
-        result = generate_avatar_presigned_url(current_user.id, content_type)
+        result = generate_avatar_presigned_url(
+            current_user.id,
+            content_type,
+            str(request.base_url),
+        )
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Could not generate upload URL: {e}")
@@ -64,12 +79,12 @@ def update_user_me(
     if user_in.name is not None:
         current_user.name = user_in.name
     if user_in.avatar_url is not None:
-        current_user.avatar_url = user_in.avatar_url
+        current_user.avatar_url = normalize_public_image_reference(user_in.avatar_url)
     
     db.add(current_user)
     db.commit()
     db.refresh(current_user)
-    return current_user
+    return _to_user_schema(current_user)
 
 @router.post("/me/change-password")
 def change_password_me(

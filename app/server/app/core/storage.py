@@ -1,6 +1,7 @@
 import io
 import uuid
 from datetime import timedelta
+from urllib.parse import urlparse
 from minio import Minio
 from minio.error import S3Error
 from app.core.config import settings
@@ -13,8 +14,8 @@ minio_client = Minio(
     secure=settings.minio_secure
 )
 
-BUCKET_NAME = "garbage-images"
-AVATAR_BUCKET_NAME = "avatars"
+BUCKET_NAME = settings.minio_bucket
+AVATAR_BUCKET_NAME = settings.minio_avatar_bucket
 
 def _ensure_public_bucket(bucket_name: str) -> None:
     """Create bucket if not exists and set public-read policy."""
@@ -42,8 +43,43 @@ def init_minio():
     except S3Error as err:
         print(f"MinIO init error: {err}")
 
+
+def normalize_public_image_reference(image_ref: str | None) -> str | None:
+    """Normalize image reference to a stable bucket/object path.
+
+    Examples:
+    - /garbage-images/abc.jpg -> garbage-images/abc.jpg
+    - garbage-images/abc.jpg -> garbage-images/abc.jpg
+    """
+    if not image_ref:
+        return None
+
+    ref = image_ref.strip()
+    if not ref:
+        return None
+
+    if ref.startswith(f"{BUCKET_NAME}/"):
+        return ref
+
+    if ref.startswith("http://") or ref.startswith("https://"):
+        parsed = urlparse(ref)
+        path = parsed.path.lstrip("/")
+        return path or None
+
+    return ref.lstrip("/")
+
+
+def build_public_image_url(image_ref: str | None, public_base_url: str | None = None) -> str | None:
+    """Return a client-safe relative path from stored bucket/object path."""
+    normalized = normalize_public_image_reference(image_ref)
+    if not normalized:
+        return None
+
+    return f"/{normalized}"
+
+
 def upload_image_to_minio(image_bytes: bytes, content_type: str = "image/jpeg") -> str:
-    """Uploads an image to MinIO and returns the URL."""
+    """Uploads an image to MinIO and returns stable bucket/object path."""
     try:
         file_name = f"{uuid.uuid4().hex}.jpg"
         data_stream = io.BytesIO(image_bytes)
@@ -56,15 +92,18 @@ def upload_image_to_minio(image_bytes: bytes, content_type: str = "image/jpeg") 
             length=length,
             content_type=content_type
         )
-        
-        # Return the public URL for the image via Nginx
-        protocol = "https" if settings.minio_secure else "http"
-        return f"{protocol}://{settings.public_minio_endpoint}/{BUCKET_NAME}/{file_name}"
+
+        # Persist only relative object path so data remains valid across IP/network changes.
+        return f"{BUCKET_NAME}/{file_name}"
     except S3Error as err:
         print(f"Failed to upload image to MinIO: {err}")
         return ""
 
-def generate_avatar_presigned_url(user_id: int, content_type: str = "image/jpeg") -> dict:
+def generate_avatar_presigned_url(
+    user_id: int,
+    content_type: str = "image/jpeg",
+    public_base_url: str | None = None,
+) -> dict:
     """
     Generate a presigned PUT URL so the client can upload avatar directly to MinIO.
     Returns dict with:
@@ -81,13 +120,17 @@ def generate_avatar_presigned_url(user_id: int, content_type: str = "image/jpeg"
         expires=timedelta(minutes=15),
     )
 
-    # The presigned URL points to internal MinIO host; replace with public host for mobile
-    protocol = "https" if settings.minio_secure else "http"
-    internal_host = settings.minio_endpoint          # e.g. "minio:9000"
-    public_host = settings.public_minio_endpoint      # e.g. "192.168.1.x"
-    upload_url = presigned_url.replace(f"http://{internal_host}", f"{protocol}://{public_host}", 1)
+    # Build public URLs from request host when provided to avoid hardcoded IPs.
+    if public_base_url:
+        base = public_base_url.rstrip("/")
+    else:
+        protocol = "https" if settings.minio_secure else "http"
+        base = f"{protocol}://{settings.public_minio_endpoint}"
 
-    public_url = f"{protocol}://{public_host}/{AVATAR_BUCKET_NAME}/{object_name}"
+    parsed = urlparse(presigned_url)
+    query = f"?{parsed.query}" if parsed.query else ""
+    upload_url = f"{base}{parsed.path}{query}"
+    public_url = f"/{AVATAR_BUCKET_NAME}/{object_name}"
 
     return {
         "upload_url": upload_url,

@@ -5,7 +5,8 @@ pymysql
 cryptography
 python-dotenv
 alembic
-pydantic~=1.10.0
+pydantic
+pydantic-settings
 python-multipart
 email-validator
 pyjwt
