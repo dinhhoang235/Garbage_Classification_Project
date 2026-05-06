@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../models/history_model.dart';
+import '../../../core/utils/image_utils.dart';
 
 class HistoryItemBottomSheet extends StatelessWidget {
   final HistoryItem item;
@@ -45,7 +46,7 @@ class HistoryItemBottomSheet extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: Image.network(
-                  item.imageUrl ?? '',
+                  buildImageUrl(item.imageUrl),
                   width: 70,
                   height: 70,
                   fit: BoxFit.cover,
@@ -53,7 +54,10 @@ class HistoryItemBottomSheet extends StatelessWidget {
                     width: 70,
                     height: 70,
                     color: Colors.grey[200],
-                    child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                    child: const Icon(
+                      Icons.image_not_supported,
+                      color: Colors.grey,
+                    ),
                   ),
                 ),
               ),
@@ -64,7 +68,10 @@ class HistoryItemBottomSheet extends StatelessWidget {
                   children: [
                     Text(
                       item.displayName,
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -75,14 +82,20 @@ class HistoryItemBottomSheet extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withAlpha(20),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Text(
                   '+15 XP',
-                  style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -90,7 +103,11 @@ class HistoryItemBottomSheet extends StatelessWidget {
           const SizedBox(height: 24),
           const Text(
             'Địa điểm quét',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+            ),
           ),
           const SizedBox(height: 8),
           Row(
@@ -115,10 +132,15 @@ class HistoryItemBottomSheet extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 elevation: 0,
               ),
-              child: const Text('Đóng', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Đóng',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ),
         ],

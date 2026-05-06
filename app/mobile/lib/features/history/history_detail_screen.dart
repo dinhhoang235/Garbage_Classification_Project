@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/image_utils.dart';
 
 class HistoryDetailScreen extends StatelessWidget {
   final Map<String, dynamic> item;
@@ -62,25 +63,33 @@ class HistoryDetailScreen extends StatelessWidget {
                         color: color.withAlpha(40),
                         shape: BoxShape.circle,
                       ),
-                      child: item['imageUrl'] != null && item['imageUrl'].toString().isNotEmpty
+                      child:
+                          item['imageUrl'] != null &&
+                              item['imageUrl'].toString().isNotEmpty
                           ? Image.network(
-                              item['imageUrl'],
+                              buildImageUrl(item['imageUrl']),
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) =>
                                   Icon(item['icon'], color: color, size: 48),
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Center(
-                                  child: CircularProgressIndicator(
-                                    value: loadingProgress.expectedTotalBytes != null
-                                        ? loadingProgress.cumulativeBytesLoaded /
-                                            loadingProgress.expectedTotalBytes!
-                                        : null,
-                                    strokeWidth: 2,
-                                    color: color,
-                                  ),
-                                );
-                              },
+                              loadingBuilder:
+                                  (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Center(
+                                      child: CircularProgressIndicator(
+                                        value:
+                                            loadingProgress
+                                                    .expectedTotalBytes !=
+                                                null
+                                            ? loadingProgress
+                                                      .cumulativeBytesLoaded /
+                                                  loadingProgress
+                                                      .expectedTotalBytes!
+                                            : null,
+                                        strokeWidth: 2,
+                                        color: color,
+                                      ),
+                                    );
+                                  },
                             )
                           : Icon(item['icon'], color: color, size: 48),
                     ),
@@ -91,7 +100,9 @@ class HistoryDetailScreen extends StatelessWidget {
             const SizedBox(height: 24),
             Text(
               item['title'],
-              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             Container(
@@ -106,7 +117,7 @@ class HistoryDetailScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 32),
-            
+
             // Stats Row
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -130,9 +141,9 @@ class HistoryDetailScreen extends StatelessWidget {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // Detail Information
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 24),
@@ -153,7 +164,9 @@ class HistoryDetailScreen extends StatelessWidget {
                 children: [
                   Text(
                     'Thông tin bổ sung',
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   _buildDetailRow(
@@ -169,16 +182,16 @@ class HistoryDetailScreen extends StatelessWidget {
                     ),
                   ),
                   _buildDetailRow(
-                    LucideIcons.checkCircle, 
-                    'Độ tin cậy', 
-                    'Nhận diện đúng ${((item['confidence'] as double? ?? 0.0) * 100).toStringAsFixed(1)}%'
+                    LucideIcons.checkCircle,
+                    'Độ tin cậy',
+                    'Nhận diện đúng ${((item['confidence'] as double? ?? 0.0) * 100).toStringAsFixed(1)}%',
                   ),
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // Classification Guide
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 24),
@@ -193,7 +206,11 @@ class HistoryDetailScreen extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(LucideIcons.lightbulb, color: AppColors.primary, size: 20),
+                      const Icon(
+                        LucideIcons.lightbulb,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         'Hướng dẫn xử lý',
@@ -206,8 +223,12 @@ class HistoryDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    item['guide'] ?? 'Đối với loại rác này, bạn nên làm sạch trước khi bỏ vào thùng rác để tăng hiệu quả tái chế và tránh mùi hôi.',
-                    style: TextStyle(color: AppColors.textSecondary, height: 1.5),
+                    item['guide'] ??
+                        'Đối với loại rác này, bạn nên làm sạch trước khi bỏ vào thùng rác để tăng hiệu quả tái chế và tránh mùi hôi.',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      height: 1.5,
+                    ),
                   ),
                 ],
               ),
@@ -249,7 +270,13 @@ class HistoryDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard(BuildContext context, IconData icon, String label, String value, Color color) {
+  Widget _buildStatCard(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+    Color color,
+  ) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -284,7 +311,12 @@ class HistoryDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(IconData icon, String label, String value, {Widget? trailing}) {
+  Widget _buildDetailRow(
+    IconData icon,
+    String label,
+    String value, {
+    Widget? trailing,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
@@ -301,7 +333,10 @@ class HistoryDetailScreen extends StatelessWidget {
                 ),
                 Text(
                   value,
-                  style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),

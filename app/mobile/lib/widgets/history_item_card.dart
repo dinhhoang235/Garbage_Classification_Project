@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
+import '../core/utils/image_utils.dart';
 
 class HistoryItemCard extends StatelessWidget {
   final String title;
@@ -34,7 +35,12 @@ class HistoryItemCard extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
           child: Container(
-            padding: const EdgeInsets.only(left: 12, top: 12, right: 8, bottom: 12),
+            padding: const EdgeInsets.only(
+              left: 12,
+              top: 12,
+              right: 8,
+              bottom: 12,
+            ),
             decoration: BoxDecoration(
               color: theme.cardColor,
               borderRadius: BorderRadius.circular(16),
@@ -53,7 +59,7 @@ class HistoryItemCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     child: imageUrl != null && imageUrl!.isNotEmpty
                         ? Image.network(
-                            imageUrl!,
+                            buildImageUrl(imageUrl),
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) =>
                                 Icon(icon, color: color, size: 20),
@@ -68,7 +74,9 @@ class HistoryItemCard extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Row(
@@ -77,19 +85,29 @@ class HistoryItemCard extends StatelessWidget {
                             child: Text(
                               time,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: theme.textTheme.labelLarge?.color, fontSize: 12),
+                              style: TextStyle(
+                                color: theme.textTheme.labelLarge?.color,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: color.withAlpha(26),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               type,
-                              style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                color: color,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ],
@@ -102,7 +120,11 @@ class HistoryItemCard extends StatelessWidget {
                   points,
                   textAlign: TextAlign.end,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 15),
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
                 ),
               ],
             ),
